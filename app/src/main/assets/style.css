@@ -38,9 +38,8 @@ body.theme-dark .done-marker:not(.is-done){background:#242a2be8;color:#e6cc9e}
 #cover-stage{background:var(--bg);overflow:hidden}
 .cover-motion-video{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:cover;object-position:50% 50%;z-index:2;pointer-events:none;opacity:0;transition:opacity .32s ease;background:transparent}
 #cover-stage.has-video .cover-motion-video{opacity:1}
-#cover-stage.has-video #bolt-glow,
-#cover-stage.has-video #bolt-flash,
-#cover-stage.has-video #spark-trail,
+/* Rock Lee's video already animates the birds and leaves, so only those
+   ambient decorations are hidden. Mnemonic Spark must remain visible. */
 #cover-stage.has-video #birds-flight,
 #cover-stage.has-video #leaves{display:none}
 #cover-stage .cover-art{z-index:0}
@@ -71,3 +70,28 @@ body.theme-dark #cover-stage .cover-motion-video{
 
 /* Block inherited double-tap events while the board slides in. */
 #board-page.board-input-guard{pointer-events:none!important}
+
+
+/* V2.4 – Strong Mnemonic Spark above the correctly aligned character video.
+   z-index 2 is reserved for the fixed-position video; this cannot resize it. */
+#cover-stage #bolt-glow{z-index:3;display:block;pointer-events:none;mix-blend-mode:screen;}
+#cover-stage #bolt-flash{z-index:4;display:block;pointer-events:none;}
+#cover-stage #spark-trail{z-index:5;display:block;pointer-events:none;}
+#cover-stage #leaves,#cover-stage #birds-flight{z-index:1;}
+#cover-stage.has-video #bolt-glow,
+#cover-stage.has-video #bolt-flash,
+#cover-stage.has-video #spark-trail{display:block;}
+#cover-stage.has-video #bolt-glow{
+    animation:bolt-intense 7.4s infinite;
+}
+#cover-stage.has-video #bolt-flash{
+    animation:skyflash 7.4s infinite;
+}
+#cover-stage.has-video #spark-trail span{
+    animation:sparkmove 7.4s linear infinite;
+}
+@media(prefers-reduced-motion:reduce){
+ #cover-stage.has-video #bolt-glow,
+ #cover-stage.has-video #bolt-flash,
+ #cover-stage.has-video #spark-trail span{animation:none}
+}
