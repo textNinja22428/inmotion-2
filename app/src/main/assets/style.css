@@ -95,3 +95,52 @@ body.theme-dark #cover-stage .cover-motion-video{
  #cover-stage.has-video #bolt-flash,
  #cover-stage.has-video #spark-trail span{animation:none}
 }
+
+/* IN MOTION v2.5 · Today matters, seal protection, gallery export */
+.time-greeting{margin-top:9px;max-width:248px;font:600 clamp(9px,2.65vw,12px)/1.35 Arial,Helvetica,sans-serif;letter-spacing:.05px;color:#796c58;text-wrap:balance}
+body.theme-dark .time-greeting{color:#b7a48a}
+.date-panel .date-weekday{margin-top:9px}
+.seal-trigger{position:absolute;z-index:9;top:63.5%;left:43.8%;width:12.4%;height:7%;padding:0;border:0;border-radius:50%;background:transparent;touch-action:manipulation;outline:none}
+.seal-pulse{display:block;position:absolute;inset:14%;border-radius:50%;box-shadow:0 0 1px 1px #ae1f2e6a,0 0 12px 4px #dc1f3a54;animation:sealHeartbeat 2.2s ease-in-out infinite;pointer-events:none}
+.seal-pulse:after{content:"";position:absolute;inset:-25%;border:1.5px solid #a71225;border-radius:50%;animation:sealRipples 2.2s ease-out infinite}
+.seal-status{position:absolute;z-index:7;left:59.5%;top:62.25%;display:flex;flex-direction:column;gap:4px;pointer-events:none}
+.seal-status span{display:block;font:bold clamp(7px,1.95vw,10px)/1.05 Arial,Helvetica,sans-serif;letter-spacing:.75px;color:#a82636;text-shadow:0 1px #fff9}
+body.theme-dark .seal-status span{color:#e86770;text-shadow:none}
+@keyframes sealHeartbeat{0%,100%{opacity:.28;transform:scale(.81)}45%{opacity:.97;transform:scale(1.24)}65%{opacity:.45;transform:scale(.96)}}
+@keyframes sealRipples{0%{opacity:.9;transform:scale(.4)}100%{opacity:0;transform:scale(1.7)}}
+
+/* Full screen, navigable historical poster */
+#history-shade{padding:0;align-items:stretch}
+#history-shade>.history-card{height:100dvh;max-height:none;width:100vw;max-width:none;border:0;border-radius:0;padding:16px 12px calc(12px + env(safe-area-inset-bottom));gap:8px;transform:none}
+.history-scroll{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;display:block;text-align:center;border:1px solid var(--line);border-radius:10px;background:#9995;padding:6px}
+#history-board.history-board{display:block;position:relative;flex:none;width:min(calc(100vw - 40px),calc((100dvh - 210px)*1055/1490));max-height:none;height:auto;min-height:0;aspect-ratio:1055/1490;margin:0 auto;background:white}
+#history-board.history-board>img{display:block;position:absolute;inset:0;width:100%;height:100%;object-fit:fill}
+#history-slots{z-index:1}
+.history-footer{display:flex;flex-direction:column;gap:10px}
+.history-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px}
+.history-actions button{height:43px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);font-size:12px;font-weight:900}
+.history-actions .zoom-btn{width:43px;font-size:22px}
+.history-actions .save-image-btn{flex:1;background:#171717;color:#fff;border-color:#171717;letter-spacing:1.1px}
+#history-status{align-self:center;line-height:1.2}
+.history-slot span{font-size:clamp(7px,1.95vw,11px);line-height:1.2}
+@media(max-height:650px){#history-board.history-board{width:min(calc(100vw - 40px),calc((100dvh - 185px)*1055/1490))}}
+
+/* Disruption protocol: inside this application, not an OS-level device lock. */
+.lockdown-shade{position:fixed;z-index:120;inset:0;display:none;align-items:center;justify-content:center;background:#090b0e;color:#f2ede5;overflow:auto;padding:22px 16px}
+.lockdown-shade.open{display:flex}
+.lockdown-ambient{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 27%,#c70b2647 0%,#6e091c22 37%,transparent 69%);animation:lockdownBlink 2.6s ease-in-out infinite}
+.lockdown-shade:before{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,transparent 0 11px,#f00b 11px 12px);opacity:.27}
+.lockdown-content{position:relative;z-index:1;width:min(100%,470px);display:flex;flex-direction:column;gap:14px}
+.lockdown-overline{font:800 10px/1.4 Arial,sans-serif;letter-spacing:2.1px;color:#ff576e;text-align:center}
+.lockdown-symbol{font-size:74px;line-height:1;color:#ff3554;text-align:center;text-shadow:0 0 12px #fb13317e,0 0 48px #ba0a35a3;animation:lockdownCore 2.1s infinite}
+.lockdown-content h1{font:900 clamp(37px,10vw,59px)/1.1 Arial,sans-serif;color:#fff;letter-spacing:4px;text-align:center}
+.lockdown-caption{text-align:center;margin:0;color:#ff657c;font:bold 11px/1.5 Arial,sans-serif;letter-spacing:1.1px}
+.lockdown-status{padding:13px 8px;text-align:center;color:#e3b5b9;border:1px solid #a72236;background:#35151f;font:700 10px/1.5 Arial,sans-serif;letter-spacing:.7px}
+.lockdown-content label{font:800 10px/1 Arial,sans-serif;color:#f0aab4;letter-spacing:2px;margin-top:9px}
+#lockdown-notes{width:100%;min-height:26dvh;max-height:40dvh;resize:vertical;background:#111519;border:1px solid #8c293e;color:#f7f3ee;border-radius:8px;outline:none;padding:14px;font:16px/1.5 Arial,sans-serif}
+#lockdown-notes:focus{border-color:#ee3955;box-shadow:0 0 0 2px #d7193d44}
+.lockdown-instruction{color:#a89b9b;font:12px/1.45 Arial,sans-serif;margin:0}
+.lockdown-enter{min-height:52px;padding:12px;background:#c82942;border:1px solid #fb586f;border-radius:9px;color:white;font:900 13px Arial,sans-serif;letter-spacing:1.15px}
+@keyframes lockdownBlink{0%,100%{opacity:.35}48%{opacity:1}62%{opacity:.55}}
+@keyframes lockdownCore{0%,100%{opacity:.6;transform:scale(.92)}42%{opacity:1;transform:scale(1.12)}}
+@media(prefers-reduced-motion:reduce){.seal-pulse,.seal-pulse:after,.lockdown-ambient,.lockdown-symbol{animation:none}}
