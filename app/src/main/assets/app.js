@@ -45,13 +45,9 @@ function points(d){return d.earned.filter(Boolean).length*5;}
 function lifetimeXP(){return Object.values(state.days).reduce((sum,d)=>sum+points(d),0);}
 function levelTitle(level){return ['FIRST SPARK','GETTING STARTED','IN MOTION','FOCUSED','MOMENTUM','UNSTOPPABLE'][Math.min(level-1,5)];}
 function updateXP(){
- const xp=lifetimeXP(), lvl=Math.floor(xp/100)+1, progress=xp%100;
- Q('cover-level').textContent=`LEVEL ${String(lvl).padStart(2,'0')}`;
- Q('level-title').textContent=levelTitle(lvl);
- Q('level-fill').style.width=progress+'%';
- Q('xp-label').textContent=`${progress} / 100 XP`;
- Q('today-label').textContent=`TODAY ${points(day())} / 40 XP`;
- Q('board-xp').textContent=`${points(day())} / 40 XP`;
+ const count=Object.keys(state.days).filter(k=>state.days[k].archived).length;
+ Q('board-xp').textContent=`${day().done.filter(Boolean).length} / 8 COMPLETE`;
+ Q('gallery-count').textContent=`${count} SAVED ${count===1?'DAY':'DAYS'}`;
 }
 function prettyDate(key,options){
  const date=new Date(`${key}T12:00:00`);
@@ -70,9 +66,21 @@ function renderSlots(){
   Object.assign(b.style,{left:s.x+'%',top:s.y+'%',width:s.w+'%',height:s.h+'%'});
   b.setAttribute('aria-label','Edit '+s.name);b.dataset.slot=i;
   const preview=document.createElement('span');preview.className='slot-preview';preview.textContent=d.slots[i]||'';b.append(preview);
-  const marker=document.createElement('span');marker.className='done-marker'+(d.done[i]?' is-done':'');marker.textContent=d.done[i]?'✓':'';b.append(marker);
+  
   b.addEventListener('click',()=>openEditor(i));layer.append(b);
+  const marker=document.createElement('button');marker.type='button';
+  marker.className='done-marker'+(d.done[i]?' is-done':'');
+  Object.assign(marker.style,{left:`calc(${s.x+s.w}% - 28px)`,top:`calc(${s.y+s.h}% - 28px)`});
+  marker.textContent=d.done[i]?'✓':'○';
+  marker.setAttribute('aria-label','Toggle completion '+s.name);
+  marker.addEventListener('click',e=>{e.stopPropagation();toggleDone(i);});
+  layer.append(marker);
  });
+}
+function toggleDone(index){
+ rollover();const d=day();d.done[index]=!d.done[index];
+ persist();renderSlots();updateXP();
+ if(d.done[index])toast('Marked complete ✓');
 }
 function enterBoard(){rollover();if(page!=='cover')return;page='board';covers.board.classList.remove('is-hidden');covers.cover.classList.add('is-hidden');}
 function goCover(){page='cover';covers.cover.classList.remove('is-hidden');covers.board.classList.add('is-hidden');updateXP();}
@@ -87,30 +95,33 @@ Q('cover-stage').addEventListener('dblclick',e=>{if(page==='cover'){enterBoard()
 function openEditor(index){rollover();editingSlot=index;const d=day();
  Q('editor-title').textContent=SECTIONS[index].name;Q('editor-overline').textContent=`${state.activeDay} / SLOT ${index+1}`;
  Q('editor-input').value=d.slots[index]||'';Q('slot-complete').checked=!!d.done[index];
- show('modal-shade');setTimeout(()=>Q('editor-input').focus(),190);
+ show('modal-shade');
 }
 function saveEditor(){if(editingSlot<0)return;const d=day(),i=editingSlot;
  d.slots[i]=Q('editor-input').value;d.done[i]=Q('slot-complete').checked;
- if(d.done[i]&&!d.earned[i]){d.earned[i]=true;toast('+5 XP · Nice work!');}
+ if(d.done[i]&&!d.earned[i])d.earned[i]=true;
  // If a day was already saved to Gallery, its latest state is still preserved.
  persist();renderSlots();updateXP();closeEditor();
 }
 function closeEditor(){Q('editor-input').blur();editingSlot=-1;hide('modal-shade');}
-function archiveToday(){rollover();day().archived=true;day().savedAt=new Date().toISOString();persist();toast('Today saved to Gallery ✓');}
+function archiveToday(){
+ rollover();const d=day();d.archived=true;d.savedAt=new Date().toISOString();
+ d.snapshot={slots:[...d.slots],done:[...d.done],savedAt:d.savedAt};
+ persist();updateXP();toast('Today saved to Gallery ✓');
+}
 function openGallery(){rollover();const list=Q('gallery-list');list.textContent='';
- const keys=Object.keys(state.days).filter(k=>k!==state.activeDay||state.days[k].archived)
-  .filter(k=>{const d=state.days[k];return d.archived||d.slots.some(t=>t&&t.trim())||d.done.some(Boolean);}).sort().reverse();
+ const keys=Object.keys(state.days).filter(k=>state.days[k].archived).sort().reverse();
  if(!keys.length){const e=document.createElement('div');e.className='gallery-empty';e.textContent='No archived days yet. Tap “SAVE TODAY TO GALLERY” on the board to keep a snapshot.';list.append(e);}
- keys.forEach(k=>{const d=state.days[k],b=document.createElement('button');b.className='gallery-item';
+ keys.forEach(k=>{const d=state.days[k].snapshot||state.days[k],b=document.createElement('button');b.className='gallery-item';
  const thumb=document.createElement('img');thumb.src='board.jpg';thumb.alt='';
  const body=document.createElement('span');body.className='gallery-item-body';
  const name=document.createElement('strong');name.textContent=prettyDate(k,{weekday:'long',day:'numeric',month:'short',year:'numeric'});
- const meta=document.createElement('small');meta.textContent=`${d.done.filter(Boolean).length}/8 completed · ${points(d)} XP · ${d.slots.filter(v=>v&&v.trim()).length} notes`;
+ const meta=document.createElement('small');meta.textContent=`${d.done.filter(Boolean).length}/8 completed · ${d.slots.filter(v=>v&&v.trim()).length} notes`;
  body.append(name,meta);b.append(thumb,body);b.addEventListener('click',()=>openHistory(k));list.append(b);
  });show('gallery-shade');
 }
 function closeGallery(){hide('gallery-shade');}
-function openHistory(key){selectedArchive=key;const d=state.days[key];Q('history-title').textContent=prettyDate(key,{day:'numeric',month:'long',year:'numeric'});Q('history-status').textContent=`${d.done.filter(Boolean).length} / 8 completed   ·   ${points(d)} XP`;
+function openHistory(key){selectedArchive=key;const d=state.days[key].snapshot||state.days[key];Q('history-title').textContent=prettyDate(key,{day:'numeric',month:'long',year:'numeric'});Q('history-status').textContent=`${d.done.filter(Boolean).length} / 8 completed   ·   ${points(d)} XP`;
  const layer=Q('history-slots');layer.textContent='';SECTIONS.forEach((s,i)=>{
  const v=document.createElement('div');v.className='history-slot'+(s.bottom?' history-bottom':'')+(s.bottomRight?' history-right':'');
  Object.assign(v.style,{left:s.x+'%',top:s.y+'%',width:s.w+'%',height:s.h+'%'});
@@ -142,8 +153,8 @@ const clickAudio=Q('web-click');let clickedAt=0;
 document.addEventListener('pointerdown',()=>{
  if(state.soundEnabled===false)return;
  const now=Date.now();if(now-clickedAt<55)return;clickedAt=now;
- if(nativeAvailable){try{window.NativeAudio.playSelect();return;}catch(e){}}
- try{clickAudio.currentTime=0;clickAudio.play().catch(()=>{});}catch(e){}
+ if(nativeAvailable){try{if(window.NativeAudio.playSelect()===true)return;}catch(e){}}
+ try{clickAudio.pause();clickAudio.currentTime=0;clickAudio.play().catch(()=>{});}catch(e){}
 },{passive:true,capture:true});
 window.handleAndroidBack=()=>{if(Q('modal-shade').classList.contains('open')){closeEditor();return true;}
  if(Q('settings-shade').classList.contains('open')){closeSettings();return true;}
