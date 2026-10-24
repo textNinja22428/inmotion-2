@@ -7,6 +7,10 @@ import android.content.res.AssetFileDescriptor;
 import android.media.AudioAttributes;
 import android.media.MediaPlayer;
 import android.media.SoundPool;
+import android.media.ToneGenerator;
+import android.media.AudioManager;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
@@ -23,6 +27,33 @@ public class MainActivity extends Activity {
     private volatile boolean selectLoaded = false;
     private SharedPreferences preferences;
     private boolean isResumed = false;
+    private boolean lockdownActive = false;
+    private ToneGenerator lockdownTone;
+    private final Handler alarmHandler = new Handler(Looper.getMainLooper());
+    private final Runnable alarmTick = new Runnable() {
+        @Override public void run() {
+            if(!lockdownActive || !isResumed) return;
+            try {
+                if(lockdownTone!=null)
+                    lockdownTone.startTone(ToneGenerator.TONE_CDMA_EMERGENCY_RINGBACK, 1700);
+            } catch(Exception e){ Log.w("IN_MOTION", "Lockdown alarm playback", e); }
+            alarmHandler.postDelayed(this, 6500);
+        }
+    };
+
+    private void changeLockdown(boolean enabled) {
+        lockdownActive=enabled;
+        alarmHandler.removeCallbacks(alarmTick);
+        if(lockdownTone!=null)lockdownTone.stopTone();
+        if(enabled && isResumed) {
+            if(lockdownTone==null) {
+                try{lockdownTone=new ToneGenerator(AudioManager.STREAM_ALARM,85);}
+                catch(Exception e){Log.w("IN_MOTION","Alarm channel unavailable",e);}
+            }
+            alarmHandler.post(alarmTick);
+        }
+        syncPlayback();
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -73,7 +104,7 @@ public class MainActivity extends Activity {
 
     private void syncPlayback() {
         if (music == null) return;
-        boolean shouldPlay = isResumed && !preferences.getBoolean("muted", false);
+        boolean shouldPlay = isResumed && !lockdownActive && !preferences.getBoolean("muted", false);
         try {
             if (shouldPlay && !music.isPlaying()) music.start();
             else if (!shouldPlay && music.isPlaying()) music.pause();
@@ -82,6 +113,16 @@ public class MainActivity extends Activity {
 
     public class AudioBridge {
         @JavascriptInterface public boolean isMuted() { return preferences.getBoolean("muted", false); }
+        @JavascriptInterface public void setLockdown(boolean enabled) {
+            runOnUiThread(() -> changeLockdown(enabled));
+        }
+        @JavascriptInterface public void saveGalleryImage(String json) {
+            GalleryExporter.export(MainActivity.this,json,success -> {
+                if(webView!=null){
+                    webView.evaluateJavascript("window.onGallerySaved('"+(success?"ok":"error")+"')",null);
+                }
+            });
+        }
         @JavascriptInterface public void setMuted(boolean muted) {
             preferences.edit().putBoolean("muted", muted).apply();
             runOnUiThread(() -> syncPlayback());
@@ -98,10 +139,14 @@ public class MainActivity extends Activity {
     }
 
     @Override protected void onResume() {
-        super.onResume(); isResumed = true; syncPlayback(); if(webView != null) webView.onResume();
+        super.onResume(); isResumed = true; syncPlayback();
+        if(lockdownActive){alarmHandler.removeCallbacks(alarmTick);alarmHandler.post(alarmTick);}
+        if(webView != null) webView.onResume();
     }
     @Override protected void onPause() {
-        isResumed = false; syncPlayback(); if(webView != null) webView.onPause(); super.onPause();
+        isResumed = false;alarmHandler.removeCallbacks(alarmTick);
+        if(lockdownTone!=null)lockdownTone.stopTone();
+        syncPlayback(); if(webView != null) webView.onPause(); super.onPause();
     }
     @Override @SuppressWarnings("deprecation") public void onBackPressed() {
         if (webView == null) { super.onBackPressed(); return; }
@@ -110,6 +155,8 @@ public class MainActivity extends Activity {
         });
     }
     @Override protected void onDestroy() {
+        alarmHandler.removeCallbacks(alarmTick);
+        if(lockdownTone!=null){lockdownTone.stopTone();lockdownTone.release();lockdownTone=null;}
         if (music != null) { music.release(); music = null; }
         if (soundPool != null) { soundPool.release(); soundPool = null; }
         if (webView != null) { webView.destroy(); webView = null; }
