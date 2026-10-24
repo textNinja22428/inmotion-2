@@ -46,3 +46,25 @@ body.theme-dark .done-marker:not(.is-done){background:#242a2be8;color:#e6cc9e}
 #cover-stage .cover-art{z-index:0}
 body.theme-dark .cover-motion-video{filter:brightness(.88) saturate(.92)}
 @media(prefers-reduced-motion:reduce){.cover-motion-video{transition:none}}
+
+/* IN MOTION 2.3: The original horizontal film is only the animated
+   upper-left crop of the portrait art. Camera-matched 1296x732 source
+   to x:-1..576, y:174..500 of the original 1054x1492 illustration.
+   Absolutely no zoom, cover-fit cropping, or whole-page replacement. */
+#cover-stage .cover-motion-video{
+ inset:auto!important;
+ left:0!important;
+ top:11.64%!important;
+ width:54.68%!important;
+ height:21.90%!important;
+ max-width:none!important;
+ max-height:none!important;
+ aspect-ratio:1296/732;
+ object-fit:fill!important;
+ object-position:center!important;
+ transform:none!important;
+ border:0;
+}
+body.theme-dark #cover-stage .cover-motion-video{
+ filter:brightness(.72) contrast(1.04) saturate(.85);
+}
