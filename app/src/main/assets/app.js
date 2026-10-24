@@ -15,6 +15,8 @@ const nativeAvailable = !!window.NativeAudio;
 const covers = {cover:Q('cover-page'),board:Q('board-page')};
 let page='cover', editingSlot=-1, selectedArchive=null;
 let boardReadyAt=0;
+let sealTapTimes=[];
+let historyZoom=1,historyBaseWidth=0;
 
 const fresh = () => ({slots:Array(8).fill(''), done:Array(8).fill(false),earned:Array(8).fill(false),archived:false,savedAt:null});
 function todayKey(date=new Date()) {return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;}
@@ -59,6 +61,17 @@ function updateDate(){
  const d=new Date(); Q('date-weekday').textContent=new Intl.DateTimeFormat('tr-TR',{weekday:'long'}).format(d).toLocaleUpperCase('tr-TR');
  Q('date-long').textContent=new Intl.DateTimeFormat('tr-TR',{day:'numeric',month:'long',year:'numeric'}).format(d);
  Q('date-clock').textContent=new Intl.DateTimeFormat('tr-TR',{hour:'2-digit',minute:'2-digit'}).format(d);
+ const hour=d.getHours();
+ const greetings=[
+  [6,"You need to be sleeping, my man. Have a great night, though."],
+  [8,"Early bird gets the worm. Let's have a great day."],
+  [12,"Protect your momentum. Make your morning count."],
+  [15,"A clear mind. One meaningful action at a time."],
+  [18,"Keep moving forward. Finish what matters."],
+  [21,"Good progress today. Keep the evening intentional."],
+  [24,"Ease into rest. Tomorrow starts with tonight."]
+ ];
+ Q('time-greeting').textContent=greetings.find(item=>hour<item[0])[1];
  Q('board-date-label').textContent=prettyDate(state.activeDay,{weekday:'short',day:'numeric',month:'short'}).toUpperCase();
 }
 function renderSlots(){
@@ -100,7 +113,7 @@ const coverVideo=Q('cover-video');
 function syncCoverVideo(){
  if(!coverVideo)return;
  coverVideo.muted=true; coverVideo.volume=0;
- if(page==='cover'&&!document.hidden){
+ if(page==='cover'&&!document.hidden&&!state.lockdownActive){
    const promise=coverVideo.play();
    if(promise&&typeof promise.catch==='function')promise.catch(()=>{});
  }else{
@@ -152,13 +165,34 @@ function openGallery(){rollover();const list=Q('gallery-list');list.textContent=
  });show('gallery-shade');
 }
 function closeGallery(){hide('gallery-shade');}
-function openHistory(key){selectedArchive=key;const d=state.days[key].snapshot||state.days[key];Q('history-title').textContent=prettyDate(key,{day:'numeric',month:'long',year:'numeric'});Q('history-status').textContent=`${d.done.filter(Boolean).length} / 8 completed   ·   ${points(d)} XP`;
+function openHistory(key){selectedArchive=key;const d=state.days[key].snapshot||state.days[key];Q('history-title').textContent=prettyDate(key,{day:'numeric',month:'long',year:'numeric'});Q('history-status').textContent=`${d.done.filter(Boolean).length} / 8 COMPLETE · ${d.slots.filter(x=>x&&x.trim()).length} NOTES`;
  const layer=Q('history-slots');layer.textContent='';SECTIONS.forEach((s,i)=>{
  const v=document.createElement('div');v.className='history-slot'+(s.bottom?' history-bottom':'')+(s.bottomRight?' history-right':'');
  Object.assign(v.style,{left:s.x+'%',top:s.y+'%',width:s.w+'%',height:s.h+'%'});
  const content=document.createElement('span');content.textContent=d.slots[i]||'';v.append(content);
  if(d.done[i]){const check=document.createElement('b');check.textContent='✓';v.append(check);}layer.append(v);
  });hide('gallery-shade');show('history-shade');
+ const poster=Q('history-board'); poster.style.width='';
+ historyBaseWidth=poster.getBoundingClientRect().width;historyZoom=1;
+ Q('history-scroll').scrollTop=0;Q('history-scroll').scrollLeft=0;
+}
+function changeHistoryZoom(direction){
+ if(!Q('history-shade').classList.contains('open'))return;
+ historyZoom=Math.max(1,Math.min(3,Math.round((historyZoom+direction*.5)*10)/10));
+ Q('history-board').style.width=Math.round(historyBaseWidth*historyZoom)+'px';
+}
+window.onGallerySaved=function(success){
+ toast(success==='ok'?'Saved to your phone gallery ✓':'Could not save image. Check Android storage settings.');
+};
+function saveHistoryToPhone(){
+ if(!selectedArchive)return;
+ const d=state.days[selectedArchive].snapshot||state.days[selectedArchive];
+ const payload=JSON.stringify({date:selectedArchive,slots:d.slots,done:d.done});
+ if(window.NativeAudio&&typeof window.NativeAudio.saveGalleryImage==='function'){
+  try{window.NativeAudio.saveGalleryImage(payload);toast('Saving image to your gallery…');return;}
+  catch(e){toast('Export failed: '+e.message);return;}
+ }
+ toast('Photo export is available in the Android app.');
 }
 function closeHistory(){hide('history-shade');openGallery();}
 function show(id){const node=Q(id);node.classList.add('open');node.setAttribute('aria-hidden','false');}
@@ -187,7 +221,50 @@ document.addEventListener('pointerdown',()=>{
  if(nativeAvailable){try{if(window.NativeAudio.playSelect()===true)return;}catch(e){}}
  try{clickAudio.pause();clickAudio.currentTime=0;clickAudio.play().catch(()=>{});}catch(e){}
 },{passive:true,capture:true});
-window.handleAndroidBack=()=>{if(Q('modal-shade').classList.contains('open')){closeEditor();return true;}
+
+/* Seal protection · five deliberate taps within five seconds. */
+function setLockdownView(active){
+ const shade=Q('lockdown-shade');
+ shade.classList.toggle('open',active);
+ shade.setAttribute('aria-hidden',active?'false':'true');
+ if(active)Q('lockdown-notes').value=state.lockdownDraft||'';
+ if(window.NativeAudio&&typeof window.NativeAudio.setLockdown==='function'){
+  try{window.NativeAudio.setLockdown(active);}catch(e){}
+ }
+ syncCoverVideo();
+}
+function triggerLockdown(){
+ if(state.lockdownActive)return;
+ state.lockdownActive=true;state.lockdownDraft='';persist();
+ sealTapTimes=[];setLockdownView(true);
+}
+function completeLockdown(){
+ const value=Q('lockdown-notes').value.trim();
+ if(!value){Q('lockdown-instruction').textContent='Write your next concrete action before restoring control.';Q('lockdown-notes').focus();return;}
+ if(!Array.isArray(state.overrideLog))state.overrideLog=[];
+ state.overrideLog.push({time:new Date().toISOString(),note:value});
+ state.lockdownActive=false;state.lockdownDraft='';
+ persist();setLockdownView(false);
+ Q('lockdown-instruction').textContent='Write at least one line to override. This note will be saved on this device.';
+ toast('Override complete. Seal intact.');
+}
+const sealTrigger=Q('seal-trigger');
+sealTrigger.addEventListener('pointerup',e=>e.stopPropagation());
+sealTrigger.addEventListener('dblclick',e=>e.stopPropagation());
+sealTrigger.addEventListener('click',e=>{
+ e.stopPropagation();
+ if(page!=='cover'||state.lockdownActive)return;
+ const now=Date.now();sealTapTimes=sealTapTimes.filter(t=>now-t<5000);
+ sealTapTimes.push(now);
+ if(sealTapTimes.length>=5){triggerLockdown();}
+ else if(sealTapTimes.length>=3){toast(`OVERRIDE: ${sealTapTimes.length}/5`);}
+});
+Q('lockdown-notes').addEventListener('input',()=>{
+ if(!state.lockdownActive)return;
+ state.lockdownDraft=Q('lockdown-notes').value;persist();
+});
+
+window.handleAndroidBack=()=>{if(state.lockdownActive)return true;if(Q('modal-shade').classList.contains('open')){closeEditor();return true;}
  if(Q('settings-shade').classList.contains('open')){closeSettings();return true;}
  if(Q('history-shade').classList.contains('open')){closeHistory();return true;}
  if(Q('gallery-shade').classList.contains('open')){closeGallery();return true;}
@@ -200,6 +277,7 @@ if(!nativeAvailable&&!isMuted()){
  Q('web-audio').play().catch(()=>{});
  document.addEventListener('pointerdown',()=>{if(!isMuted()&&Q('web-audio').paused)Q('web-audio').play().catch(()=>{});},{passive:true});
 }
-renderSlots();updateDate();updateXP();applyTheme();prepareAmbient();persist();syncCoverVideo();
+renderSlots();updateDate();updateXP();applyTheme();prepareAmbient();persist();
+if(state.lockdownActive)setLockdownView(true);else syncCoverVideo();
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){rollover();updateDate();updateXP();}syncCoverVideo();});
 setInterval(()=>{rollover();updateDate();},30000);
