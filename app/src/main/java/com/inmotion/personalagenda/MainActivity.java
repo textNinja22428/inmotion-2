@@ -83,11 +83,10 @@ public class MainActivity extends Activity {
             preferences.edit().putBoolean("muted", muted).apply();
             runOnUiThread(() -> syncPlayback());
         }
-        @JavascriptInterface public void playSelect() {
-            runOnUiThread(() -> {
-                if (soundPool != null && selectLoaded && selectSoundId != 0)
-                    soundPool.play(selectSoundId, 0.9f, 0.9f, 1, 0, 1.0f);
-            });
+        @JavascriptInterface public boolean playSelect() {
+            if (soundPool == null || !selectLoaded || selectSoundId == 0) return false;
+            runOnUiThread(() -> soundPool.play(selectSoundId, 0.9f, 0.9f, 1, 0, 1.0f));
+            return true;
         }
     }
 
