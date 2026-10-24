@@ -20,7 +20,7 @@ public class MainActivity extends Activity {
     private MediaPlayer music;
     private SoundPool soundPool;
     private int selectSoundId = 0;
-    private boolean selectLoaded = false;
+    private volatile boolean selectLoaded = false;
     private SharedPreferences preferences;
     private boolean isResumed = false;
 
@@ -55,17 +55,20 @@ public class MainActivity extends Activity {
             music.prepare();
         } catch (Exception e) { Log.e("IN_MOTION", "Background music unavailable", e); }
 
-        soundPool = new SoundPool.Builder().setMaxStreams(3)
-            .setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build()).build();
+        soundPool = new SoundPool.Builder().setMaxStreams(6)
+            .setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA)
+                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build()).build();
         soundPool.setOnLoadCompleteListener((pool, sampleId, status) -> {
-            if (sampleId == selectSoundId && status == 0) selectLoaded = true;
+            if (sampleId > 0 && status == 0) selectLoaded = true;
+            if (status != 0) Log.w("IN_MOTION", "Selection sound load error: " + status);
         });
         try {
-            AssetFileDescriptor effect = getAssets().openFd("select_sound.mp3");
+            AssetFileDescriptor effect;
+            try { effect = getAssets().openFd("select_sound_loud.wav"); }
+            catch (Exception missing) { effect = getAssets().openFd("select_sound.mp3"); }
             selectSoundId = soundPool.load(effect, 1);
             effect.close();
-        } catch (Exception e) { Log.w("IN_MOTION", "Selection sound missing; upload select_sound.mp3", e); }
+        } catch (Exception e) { Log.w("IN_MOTION", "Selection audio could not be loaded", e); }
     }
 
     private void syncPlayback() {
@@ -85,8 +88,12 @@ public class MainActivity extends Activity {
         }
         @JavascriptInterface public boolean playSelect() {
             if (soundPool == null || !selectLoaded || selectSoundId == 0) return false;
-            runOnUiThread(() -> soundPool.play(selectSoundId, 0.9f, 0.9f, 1, 0, 1.0f));
-            return true;
+            try {
+                return soundPool.play(selectSoundId, 1f, 1f, 1, 0, 1.0f) > 0;
+            } catch (Exception e) {
+                Log.w("IN_MOTION", "Select effect could not play", e);
+                return false;
+            }
         }
     }
 
