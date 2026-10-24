@@ -68,3 +68,6 @@ body.theme-dark .cover-motion-video{filter:brightness(.88) saturate(.92)}
 body.theme-dark #cover-stage .cover-motion-video{
  filter:brightness(.72) contrast(1.04) saturate(.85);
 }
+
+/* Block inherited double-tap events while the board slides in. */
+#board-page.board-input-guard{pointer-events:none!important}
