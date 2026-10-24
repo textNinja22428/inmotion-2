@@ -14,6 +14,8 @@ const STATE_KEY = 'inmotion-v2';
 const nativeAvailable = !!window.NativeAudio;
 const covers = {cover:Q('cover-page'),board:Q('board-page')};
 let page='cover', editingSlot=-1, selectedArchive=null;
+let boardReadyAt=0;
+
 const fresh = () => ({slots:Array(8).fill(''), done:Array(8).fill(false),earned:Array(8).fill(false),archived:false,savedAt:null});
 function todayKey(date=new Date()) {return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;}
 function loadState(){
@@ -78,12 +80,20 @@ function renderSlots(){
  });
 }
 function toggleDone(index){
+ if(page!=='board'||Date.now()<boardReadyAt)return;
  rollover();const d=day();d.done[index]=!d.done[index];
  persist();renderSlots();updateXP();
  if(d.done[index])toast('Marked complete ✓');
 }
-function enterBoard(){rollover();if(page!=='cover')return;page='board';covers.board.classList.remove('is-hidden');covers.cover.classList.add('is-hidden');syncCoverVideo();}
-function goCover(){page='cover';covers.cover.classList.remove('is-hidden');covers.board.classList.add('is-hidden');updateXP();syncCoverVideo();}
+function enterBoard(){
+ rollover();if(page!=='cover')return;
+ page='board';boardReadyAt=Date.now()+720;
+ covers.board.classList.add('board-input-guard');
+ covers.board.classList.remove('is-hidden');covers.cover.classList.add('is-hidden');
+ syncCoverVideo();
+ setTimeout(()=>{if(page==='board')covers.board.classList.remove('board-input-guard');},740);
+}
+function goCover(){page='cover';covers.cover.classList.remove('is-hidden');covers.board.classList.add('is-hidden');covers.board.classList.remove('board-input-guard');updateXP();syncCoverVideo();}
 
 /* Portrait, silent cover animation. The original artwork remains visible as a fallback. */
 const coverVideo=Q('cover-video');
@@ -109,11 +119,11 @@ let lastTap=0,lastX=0,lastY=0;
 Q('cover-stage').addEventListener('pointerup',e=>{
  if(page!=='cover'||(e.pointerType==='mouse'&&e.button!==0))return;
  const now=Date.now(),dist=Math.hypot(e.clientX-lastX,e.clientY-lastY);
- if(now-lastTap<370&&dist<55){lastTap=0;enterBoard();e.preventDefault();}
+ if(now-lastTap<370&&dist<55){lastTap=0;enterBoard();e.preventDefault();e.stopPropagation();}
  else{lastTap=now;lastX=e.clientX;lastY=e.clientY;}
 });
-Q('cover-stage').addEventListener('dblclick',e=>{if(page==='cover'){enterBoard();e.preventDefault();}});
-function openEditor(index){rollover();editingSlot=index;const d=day();
+Q('cover-stage').addEventListener('dblclick',e=>{if(page==='cover'){enterBoard();e.preventDefault();e.stopPropagation();}});
+function openEditor(index){if(page!=='board'||Date.now()<boardReadyAt)return;rollover();editingSlot=index;const d=day();
  Q('editor-title').textContent=SECTIONS[index].name;Q('editor-overline').textContent=`${state.activeDay} / SLOT ${index+1}`;
  Q('editor-input').value=d.slots[index]||'';Q('slot-complete').checked=!!d.done[index];
  show('modal-shade');
