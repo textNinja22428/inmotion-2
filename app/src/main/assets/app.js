@@ -82,8 +82,29 @@ function toggleDone(index){
  persist();renderSlots();updateXP();
  if(d.done[index])toast('Marked complete ✓');
 }
-function enterBoard(){rollover();if(page!=='cover')return;page='board';covers.board.classList.remove('is-hidden');covers.cover.classList.add('is-hidden');}
-function goCover(){page='cover';covers.cover.classList.remove('is-hidden');covers.board.classList.add('is-hidden');updateXP();}
+function enterBoard(){rollover();if(page!=='cover')return;page='board';covers.board.classList.remove('is-hidden');covers.cover.classList.add('is-hidden');syncCoverVideo();}
+function goCover(){page='cover';covers.cover.classList.remove('is-hidden');covers.board.classList.add('is-hidden');updateXP();syncCoverVideo();}
+
+/* Portrait, silent cover animation. The original artwork remains visible as a fallback. */
+const coverVideo=Q('cover-video');
+function syncCoverVideo(){
+ if(!coverVideo)return;
+ coverVideo.muted=true; coverVideo.volume=0;
+ if(page==='cover'&&!document.hidden){
+   const promise=coverVideo.play();
+   if(promise&&typeof promise.catch==='function')promise.catch(()=>{});
+ }else{
+   coverVideo.pause();
+ }
+}
+if(coverVideo){
+ coverVideo.muted=true;
+ coverVideo.addEventListener('playing',()=>Q('cover-stage').classList.add('has-video'));
+ coverVideo.addEventListener('error',()=>Q('cover-stage').classList.remove('has-video'));
+ coverVideo.addEventListener('stalled',()=>{if(coverVideo.readyState<2)Q('cover-stage').classList.remove('has-video');});
+ coverVideo.addEventListener('loadeddata',()=>{if(page==='cover')syncCoverVideo();});
+}
+
 let lastTap=0,lastX=0,lastY=0;
 Q('cover-stage').addEventListener('pointerup',e=>{
  if(page!=='cover'||(e.pointerType==='mouse'&&e.button!==0))return;
@@ -169,6 +190,6 @@ if(!nativeAvailable&&!isMuted()){
  Q('web-audio').play().catch(()=>{});
  document.addEventListener('pointerdown',()=>{if(!isMuted()&&Q('web-audio').paused)Q('web-audio').play().catch(()=>{});},{passive:true});
 }
-renderSlots();updateDate();updateXP();applyTheme();prepareAmbient();persist();
-document.addEventListener('visibilitychange',()=>{if(!document.hidden){rollover();updateDate();updateXP();}});
+renderSlots();updateDate();updateXP();applyTheme();prepareAmbient();persist();syncCoverVideo();
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){rollover();updateDate();updateXP();}syncCoverVideo();});
 setInterval(()=>{rollover();updateDate();},30000);
