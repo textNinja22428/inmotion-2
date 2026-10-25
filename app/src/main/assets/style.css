@@ -553,3 +553,62 @@ body.theme-dark #cover-stage .seal-motion-video{
  background:color-mix(in srgb,var(--gold) 14%,var(--glass))!important;
 }
 #stopwatch-launch.stopwatch-running .stopwatch-mini{color:var(--gold)}
+
+/* IN MOTION 2.8 — PERSONAL INTELLIGENCE: unobtrusive, partner-safe UI */
+.agent-launch{
+ position:fixed;top:calc(max(12px,env(safe-area-inset-top)) + 54px);right:14px;
+ z-index:6;display:flex;align-items:center;gap:6px;
+ min-height:34px;padding:7px 10px;border:1px solid #c6ad7e;
+ border-radius:11px;background:var(--glass);color:var(--ink);
+ font:800 10px/1.2 Arial,Helvetica,sans-serif;letter-spacing:.6px;
+ box-shadow:0 2px 12px #0001;backdrop-filter:blur(8px);
+}
+.agent-launch-mark{color:#bf861e;font-size:16px}
+.voice-edit-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:32px}
+.voice-edit-bar>span,.voice-edit-bar>label{
+ font:800 10px Arial,sans-serif;letter-spacing:1.3px;color:var(--muted);margin:0;
+}
+.voice-mic-btn{min-height:34px;padding:6px 11px;flex:0 0 auto;
+ border:1px solid #bfa57f;border-radius:8px;
+ background:var(--bg);color:var(--ink);font:800 10px Arial,sans-serif;letter-spacing:.5px;
+}
+.voice-mic-btn:active,.agent-voice-btn:active{background:#d39c302a}
+.agent-card{
+ width:min(96vw,520px);height:min(88dvh,860px);min-height:min(550px,85dvh);
+ display:flex;flex-direction:column;gap:10px;padding:19px 16px;
+ background:var(--panel);color:var(--ink);border:1px solid var(--line);
+ border-radius:17px;box-shadow:0 18px 70px #0004;min-width:0;
+}
+.agent-title-spark{color:var(--gold)}
+.agent-private{display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;
+ font:800 9px Arial,Helvetica,sans-serif;letter-spacing:.5px;color:var(--muted)}
+.agent-private>span:first-child{color:var(--gold)}
+.agent-description{font-size:12px;line-height:1.45;color:var(--muted);margin:0}
+.agent-suggestions{display:flex;gap:6px;flex-wrap:wrap}
+.agent-suggestions button{flex:1;min-width:78px;min-height:34px;border-radius:7px;
+ border:1px solid var(--line);background:var(--bg);color:var(--ink);
+ font:800 10px Arial,sans-serif;letter-spacing:.7px;padding:7px 9px}
+.agent-messages{min-height:0;flex:1;overflow:auto;display:flex;
+ flex-direction:column;gap:10px;padding:10px;
+ background:var(--bg);border:1px solid var(--line);border-radius:10px;
+ overscroll-behavior:contain}
+.agent-message{max-width:96%;padding:11px 12px;border-radius:10px;
+ font:13px/1.55 Arial,Helvetica,sans-serif;overflow-wrap:anywhere;white-space:pre-wrap}
+.agent-message.assistant{align-self:flex-start;background:var(--panel);border:1px solid var(--line)}
+.agent-message.user{align-self:flex-end;background:#c88e2a25;border:1px solid #c88e2a55}
+.agent-message small{display:block;margin-bottom:6px;font:800 9px Arial,sans-serif;
+ letter-spacing:1px;color:var(--gold)}
+.agent-compose{display:flex;gap:6px;align-items:stretch;min-height:57px}
+#agent-input{min-width:0;min-height:57px;max-height:96px;resize:vertical;flex:1;
+ background:var(--bg);color:var(--ink);border:1px solid var(--line);
+ border-radius:9px;padding:10px;font:14px/1.45 Arial,sans-serif}
+.agent-compose button{align-self:stretch;border-radius:9px;min-width:43px;
+ padding:4px 9px;font:900 11px Arial,sans-serif}
+.agent-voice-btn{background:var(--bg);border:1px solid var(--line);color:var(--ink);font-size:20px!important}
+.agent-send-btn{background:var(--ink);border:1px solid var(--ink);color:var(--bg)}
+.agent-footer{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.agent-footer span{color:var(--muted);font:800 9px Arial,sans-serif;letter-spacing:.3px}
+.agent-footer button{border:0;background:none;color:var(--muted);
+ text-decoration:underline;font:800 10px Arial,sans-serif}
+@media(max-height:660px){.agent-card{gap:7px;padding:12px}.agent-description{display:none}
+.agent-launch{top:calc(max(10px,env(safe-area-inset-top)) + 48px)}}
