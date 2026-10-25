@@ -19,8 +19,8 @@ if (width,height)!=(1054,1492):
     raise RuntimeError(f"Unexpected cover dimensions: {width}x{height}")
 
 # Remove the original small symbol from the BOTTOM-CENTER of the poster.
-# A short feather prevents a hard-edged patch on the Swiss editorial paper.
-x1,y1,x2,y2=445,1260,609,1439
+# Extend upward to erase the residual top of the old symbol, while keeping\n# the IN MOTION title untouched. A feather avoids any rectangular edge.
+x1,y1,x2,y2=440,1130,620,1450
 part=base[y1:y2,x1:x2].astype(np.float32)
 H,W=part.shape[:2]
 yy,xx=np.mgrid[:H,:W]
