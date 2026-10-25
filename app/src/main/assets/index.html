@@ -16,6 +16,10 @@
 </section>
 <section id="board-page" class="page is-hidden" aria-label="Personal agenda board">
   <div class="board-topbar"><button class="board-action" onclick="goCover()" aria-label="Back">‹</button><button id="stopwatch-launch" type="button" class="board-action stopwatch-action" onclick="openStopwatch()" aria-label="Open stopwatch" title="Stopwatch"><svg class="stopwatch-launch-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6M12 2v3M18.5 5.5l1.5 1.5"/></svg><span id="stopwatch-mini" class="stopwatch-mini">00:00</span></button><div class="board-date"><div id="board-date-label">TODAY</div><b id="board-xp">0 / 8 COMPLETE</b></div><button type="button" class="board-action youtube-action" onclick="openYouTube()" aria-label="Open YouTube"><span class="yt-play-mark">▶</span></button><button class="board-action gallery-action" onclick="openGallery()" aria-label="Gallery">▦</button><button class="board-action" onclick="openSettings()" aria-label="Settings">⚙</button></div>
+  <div id="board-media-strip" class="board-media-strip">
+   <button class="board-media-tile" type="button" onclick="openFocusJournal('ee')" aria-label="Open Eat Proper and Exercise Journal"><video autoplay muted playsinline loop preload="metadata"><source src="ee_preview.mp4" type="video/mp4"></video><span>E, E · MOVE</span></button>
+   <button class="board-media-tile" type="button" onclick="openFocusJournal('study')" aria-label="Open Study Journal"><video autoplay muted playsinline loop preload="metadata"><source src="study_preview.mp4" type="video/mp4"></video><span>STUDY · FOCUS</span></button>
+  </div>
   <div class="image-stage" id="board-stage"><img class="base-image board-art" src="board.jpg" alt="Eight personal agenda sections" draggable="false"><div id="slot-layer"></div></div>
   <div class="board-footer"><button class="gallery-save" onclick="archiveToday()">✓ SAVE TODAY TO GALLERY</button></div>
 </section>
@@ -52,13 +56,13 @@
 </div>
 <div id="stopwatch-shade" class="shade" aria-hidden="true"><section class="stopwatch-card" role="dialog" aria-modal="true" aria-labelledby="stopwatch-title"><header class="editor-header"><div><div class="editor-overline">IN MOTION / FOCUS CLOCK</div><h1 id="stopwatch-title">STOPWATCH</h1></div><button type="button" class="icon-close" onclick="closeStopwatch()" aria-label="Close stopwatch">×</button></header><div id="stopwatch-display" class="stopwatch-display" role="timer" aria-live="off">00:00:00.00</div><div class="stopwatch-actions"><button type="button" class="cancel-btn" onclick="resetStopwatch()">RESET</button><button type="button" class="save-btn" id="stopwatch-toggle" onclick="toggleStopwatch()">START</button></div><p class="settings-note">The stopwatch keeps its elapsed time even when this panel is closed or the app is reopened.</p></section></div>
 <div id="work-shade" class="work-shade" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Work Journal">
- <div class="work-header"><button class="work-return" type="button" onclick="closeWorkJournal()" aria-label="Back to IN MOTION">‹</button><div><span>IN MOTION / PROFESSIONAL RECORD</span><strong>WORK JOURNAL</strong></div><button class="work-settings" type="button" onclick="openInMotionAgent()" aria-label="Ask in Motion">✦</button></div>
+ <div class="work-header"><button class="work-return" type="button" onclick="closeWorkJournal()" aria-label="Back to IN MOTION">‹</button><div><span id="journal-eyebrow">IN MOTION / PROFESSIONAL RECORD</span><strong id="journal-title">WORK JOURNAL</strong></div><button class="work-settings" type="button" onclick="openInMotionAgent()" aria-label="Ask in Motion">✦</button></div>
  <div id="work-scroll" class="work-scroll">
-  <div class="work-hero"><img src="work_hero.jpg" alt="Work journal cover art" onerror="this.style.display='none';this.parentElement.classList.add('work-hero-fallback')" draggable="false"><div class="work-hero-label">MAKE TODAY COUNT</div></div>
-  <p class="work-intro">The work you put in. The days you lived. The evidence you choose to keep.</p>
+  <div class="work-hero"><img id="journal-hero" src="work_hero.jpg" alt="Work journal cover art" onerror="this.style.display='none';this.parentElement.classList.add('work-hero-fallback')" draggable="false"><div id="journal-hero-label" class="work-hero-label">MAKE TODAY COUNT</div></div>
+  <p id="journal-intro" class="work-intro">The work you put in. The days you lived. The evidence you choose to keep.</p>
   <div class="work-toolbar"><label>PHOTO DATE <input id="work-date" type="date" /></label><button type="button" onclick="addWorkPhotos()">+ ADD PHOTOS</button></div>
   <p class="work-privacy">IN MOTION stores selected photos in its private app storage and does not send them to AI. Keep originals in your phone gallery as a backup.</p>
-  <div id="work-days" class="work-days"></div><button id="work-more" class="work-more" onclick="loadMoreWorkDays()" type="button">LOAD EARLIER DAYS</button>
+  <div id="work-days" class="work-days"></div><button id="work-more" class="work-more" onclick="loadMoreWorkDays()" type="button">LOAD UPCOMING DAYS</button>
  </div>
 </div>
 <div id="work-lightbox" class="work-lightbox" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Work photo"><button type="button" onclick="closeWorkPhoto()" aria-label="Close photo">×</button><img id="work-lightbox-photo" alt="Saved work photo" /></div>
