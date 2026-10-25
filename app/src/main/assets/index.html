@@ -14,7 +14,7 @@
   
 </section>
 <section id="board-page" class="page is-hidden" aria-label="Personal agenda board">
-  <div class="board-topbar"><button class="board-action" onclick="goCover()" aria-label="Back">‹</button><div class="board-date"><div id="board-date-label">TODAY</div><b id="board-xp">0 / 8 COMPLETE</b></div><button class="board-action gallery-action" onclick="openGallery()" aria-label="Gallery">▦</button><button class="board-action" onclick="openSettings()" aria-label="Settings">⚙</button></div>
+  <div class="board-topbar"><button class="board-action" onclick="goCover()" aria-label="Back">‹</button><button type="button" class="board-action stopwatch-action" onclick="openStopwatch()" aria-label="Stopwatch">⏱</button><div class="board-date"><div id="board-date-label">TODAY</div><b id="board-xp">0 / 8 COMPLETE</b></div><button type="button" class="board-action youtube-action" onclick="openYouTube()" aria-label="Open YouTube"><span class="yt-play-mark">▶</span></button><button class="board-action gallery-action" onclick="openGallery()" aria-label="Gallery">▦</button><button class="board-action" onclick="openSettings()" aria-label="Settings">⚙</button></div>
   <div class="image-stage" id="board-stage"><img class="base-image board-art" src="board.jpg" alt="Eight personal agenda sections" draggable="false"><div id="slot-layer"></div></div>
   <div class="board-footer"><button class="gallery-save" onclick="archiveToday()">✓ SAVE TODAY TO GALLERY</button></div>
 </section>
@@ -48,6 +48,7 @@
     <div class="lockdown-actions"><button id="lockdown-copy" class="lockdown-copy" type="button" onclick="copyLockdownForChatGPT()">COPY FOR CHATGPT</button><button id="lockdown-enter" class="lockdown-enter" type="button" onclick="completeLockdown()">ENTER / RESTORE CONTROL</button></div>
   </div>
 </div>
+<div id="stopwatch-shade" class="shade" aria-hidden="true"><section class="stopwatch-card" role="dialog" aria-modal="true" aria-labelledby="stopwatch-title"><header class="editor-header"><div><div class="editor-overline">IN MOTION / FOCUS CLOCK</div><h1 id="stopwatch-title">STOPWATCH</h1></div><button type="button" class="icon-close" onclick="closeStopwatch()" aria-label="Close stopwatch">×</button></header><div id="stopwatch-display" class="stopwatch-display" role="timer" aria-live="off">00:00:00.00</div><div class="stopwatch-actions"><button type="button" class="cancel-btn" onclick="resetStopwatch()">RESET</button><button type="button" class="save-btn" id="stopwatch-toggle" onclick="toggleStopwatch()">START</button></div><p class="settings-note">The stopwatch keeps its elapsed time even when this panel is closed or the app is reopened.</p></section></div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <audio id="web-audio" src="beneath_the_mask_instrumental.mp3" preload="none" loop></audio><audio id="web-click" src="select_sound_loud.wav" preload="auto"></audio><audio id="web-lockdown" src="guardians_lockdown.mp3" preload="none" loop></audio>
 <script src="app.js"></script>
