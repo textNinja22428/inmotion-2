@@ -250,8 +250,15 @@ function formatStopwatch(ms){
  return [hh,mm,ss].map(n=>String(n).padStart(2,'0')).join(':')+'.'+String(cs).padStart(2,'0');
 }
 function renderStopwatch(){
- Q('stopwatch-display').textContent=formatStopwatch(stopwatchElapsed());
+ const elapsed=stopwatchElapsed();
+ Q('stopwatch-display').textContent=formatStopwatch(elapsed);
  Q('stopwatch-toggle').textContent=stopwatch.running?'PAUSE':'START';
+ const seconds=Math.floor(elapsed/1000);
+ const label=seconds>=3600
+  ? Math.floor(seconds/3600)+'h'+String(Math.floor(seconds/60)%60).padStart(2,'0')
+  : String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0');
+ Q('stopwatch-mini').textContent=label;
+ Q('stopwatch-launch').classList.toggle('stopwatch-running',stopwatch.running);
 }
 function openStopwatch(){
  if(page!=='board'||state.lockdownActive)return;
@@ -405,7 +412,8 @@ if(!nativeAvailable&&!isMuted()){
  Q('web-audio').play().catch(()=>{});
  document.addEventListener('pointerdown',()=>{if(!isMuted()&&Q('web-audio').paused)Q('web-audio').play().catch(()=>{});},{passive:true});
 }
-renderSlots();updateDate();updateXP();applyTheme();prepareAmbient();persist();
+renderSlots();updateDate();updateXP();applyTheme();prepareAmbient();persist();renderStopwatch();
+setInterval(()=>{if(stopwatch.running&&!document.hidden)renderStopwatch();},800);
 if(state.lockdownActive)setLockdownView(true);else syncCoverVideo();
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){rollover();updateDate();updateXP();}syncCoverVideo();});
 setInterval(()=>{rollover();updateDate();},30000);
