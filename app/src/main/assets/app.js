@@ -222,6 +222,70 @@ function show(id){const node=Q(id);node.classList.add('open');node.setAttribute(
 function hide(id){const node=Q(id);node.classList.remove('open');node.setAttribute('aria-hidden','true');}
 let toastTimer=null;
 function toast(message){const node=Q('toast');node.textContent=message;node.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>node.classList.remove('show'),2500);}
+
+/* IN MOTION 2.7.6: persistent stopwatch and native Android YouTube shortcut. */
+const STOPWATCH_STORAGE_KEY='inmotion-stopwatch-v1';
+function loadStopwatch(){
+ try{
+  const v=JSON.parse(localStorage.getItem(STOPWATCH_STORAGE_KEY)||'null');
+  if(v && Number.isFinite(v.elapsedMs) && Number.isFinite(v.startedAt)){
+   return {elapsedMs:Math.max(0,v.elapsedMs),startedAt:v.startedAt,running:v.running===true};
+  }
+ }catch(e){}
+ return {elapsedMs:0,startedAt:0,running:false};
+}
+let stopwatch=loadStopwatch(),stopwatchInterval=null;
+function saveStopwatch(){
+ try{localStorage.setItem(STOPWATCH_STORAGE_KEY,JSON.stringify(stopwatch));}catch(e){}
+}
+function stopwatchElapsed(){
+ return Math.max(0,stopwatch.elapsedMs+(stopwatch.running?Math.max(0,Date.now()-stopwatch.startedAt):0));
+}
+function formatStopwatch(ms){
+ const centiseconds=Math.floor(ms/10);
+ const hh=Math.floor(centiseconds/360000);
+ const mm=Math.floor(centiseconds/6000)%60;
+ const ss=Math.floor(centiseconds/100)%60;
+ const cs=centiseconds%100;
+ return [hh,mm,ss].map(n=>String(n).padStart(2,'0')).join(':')+'.'+String(cs).padStart(2,'0');
+}
+function renderStopwatch(){
+ Q('stopwatch-display').textContent=formatStopwatch(stopwatchElapsed());
+ Q('stopwatch-toggle').textContent=stopwatch.running?'PAUSE':'START';
+}
+function openStopwatch(){
+ if(page!=='board'||state.lockdownActive)return;
+ renderStopwatch();
+ show('stopwatch-shade');
+ if(stopwatchInterval!==null)clearInterval(stopwatchInterval);
+ stopwatchInterval=setInterval(()=>{
+  if(!document.hidden && Q('stopwatch-shade').classList.contains('open'))renderStopwatch();
+ },75);
+}
+function closeStopwatch(){
+ hide('stopwatch-shade');
+ if(stopwatchInterval!==null){clearInterval(stopwatchInterval);stopwatchInterval=null;}
+}
+function toggleStopwatch(){
+ if(stopwatch.running){
+  stopwatch.elapsedMs=stopwatchElapsed();stopwatch.startedAt=0;stopwatch.running=false;
+ } else {
+  stopwatch.startedAt=Date.now();stopwatch.running=true;
+ }
+ saveStopwatch();renderStopwatch();
+}
+function resetStopwatch(){
+ stopwatch={elapsedMs:0,startedAt:0,running:false};saveStopwatch();renderStopwatch();
+}
+function openYouTube(){
+ if(page!=='board'||state.lockdownActive)return;
+ if(window.NativeAudio && typeof window.NativeAudio.openYouTube==='function'){
+  try{window.NativeAudio.openYouTube();return;}catch(e){}
+ }
+ const newWindow=window.open('https://www.youtube.com','_blank');
+ if(!newWindow)toast('Could not open YouTube.');
+}
+
 function isMuted(){if(nativeAvailable){try{return !!window.NativeAudio.isMuted();}catch(e){}}
  try{return localStorage.getItem('inmotion-mute')==='true';}catch(e){return false;}}
 function setMuted(muted){try{localStorage.setItem('inmotion-mute',String(muted));}catch(e){}
@@ -235,7 +299,7 @@ function closeSettings(){hide('settings-shade');}
 Q('music-enabled').addEventListener('change',e=>setMuted(!e.target.checked));
 Q('dark-enabled').addEventListener('change',e=>{state.theme=e.target.checked?'dark':'light';persist();applyTheme();});
 Q('sound-enabled').addEventListener('change',e=>{state.soundEnabled=e.target.checked;persist();});
-for(const id of ['modal-shade','settings-shade','gallery-shade','history-shade'])Q(id).addEventListener('pointerdown',e=>{if(e.target===Q(id)){if(id==='modal-shade')closeEditor();else if(id==='settings-shade')closeSettings();else if(id==='gallery-shade')closeGallery();else closeHistory();}});
+for(const id of ['modal-shade','settings-shade','gallery-shade','history-shade','stopwatch-shade'])Q(id).addEventListener('pointerdown',e=>{if(e.target===Q(id)){if(id==='modal-shade')closeEditor();else if(id==='settings-shade')closeSettings();else if(id==='gallery-shade')closeGallery();else if(id==='stopwatch-shade')closeStopwatch();else closeHistory();}});
 // All pointer interactions: a single select sample through native SoundPool, or HTML audio in browsers.
 const clickAudio=Q('web-click');let clickedAt=0;
 document.addEventListener('pointerdown',()=>{
@@ -328,7 +392,7 @@ Q('lockdown-notes').addEventListener('input',()=>{
  state.lockdownDraft=Q('lockdown-notes').value;persist();
 });
 
-window.handleAndroidBack=()=>{if(state.lockdownActive)return true;if(Q('modal-shade').classList.contains('open')){closeEditor();return true;}
+window.handleAndroidBack=()=>{if(state.lockdownActive)return true;if(Q('stopwatch-shade').classList.contains('open')){closeStopwatch();return true;}if(Q('modal-shade').classList.contains('open')){closeEditor();return true;}
  if(Q('settings-shade').classList.contains('open')){closeSettings();return true;}
  if(Q('history-shade').classList.contains('open')){closeHistory();return true;}
  if(Q('gallery-shade').classList.contains('open')){closeGallery();return true;}
