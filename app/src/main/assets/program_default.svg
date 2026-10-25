@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="506" height="740" viewBox="0 0 506 740">
+ <defs><linearGradient id="bg" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#1f2337"/><stop offset=".5" stop-color="#342128"/><stop offset="1" stop-color="#111827"/></linearGradient><linearGradient id="gold" x1="0" x2="0" y1="0" y2="1"><stop stop-color="#fff8a3"/><stop offset=".5" stop-color="#f6af19"/><stop offset="1" stop-color="#a95d08"/></linearGradient><filter id="shadow"><feDropShadow dx="2" dy="3" stdDeviation="2" flood-opacity=".9"/></filter></defs>
+ <rect width="506" height="740" rx="12" fill="url(#bg)"/>
+ <rect x="13" y="13" width="480" height="714" rx="17" fill="none" stroke="#e6ab51" stroke-width="8"/>
+ <rect x="26" y="28" width="454" height="681" rx="10" fill="none" stroke="#f1d383" stroke-width="2"/>
+ <path d="M20 93H486M20 650H486" stroke="#eab56c" opacity=".5" stroke-width="2"/>
+ <text x="253" y="120" font-family="Impact,Arial Narrow,Arial,sans-serif" text-anchor="middle" font-size="57" font-weight="900" fill="url(#gold)" stroke="#151018" stroke-width="6" paint-order="stroke" filter="url(#shadow)">TRAINING PROGRAM</text>
+ <g font-family="Arial, sans-serif" font-size="25" font-weight="900" text-anchor="middle" fill="#ffd84a" stroke="#151018" stroke-width="5" paint-order="stroke">
+ <text x="253" y="200">MONDAY · LEGS &amp; BICEPS</text>
+ <text x="253" y="256">TUESDAY · SHOULDERS +</text><text x="253" y="287">2 SETS CHEST PRESS</text>
+ <text x="253" y="353">WEDNESDAY · BACK &amp; TRICEPS</text>
+ <text x="253" y="417">THURSDAY · LEGS &amp; BICEPS</text>
+ <text x="253" y="476">FRIDAY · SHOULDERS +</text><text x="253" y="507">2 SETS CHEST PRESS</text>
+ <text x="253" y="577">SATURDAY · BACK &amp; TRICEPS</text>
+ </g>
+ <text x="253" y="663" font-family="Arial,sans-serif" font-size="33" font-weight="900" text-anchor="middle" fill="#8cd0ff" stroke="#151018" stroke-width="5" paint-order="stroke">SUNDAY · REST</text>
+</svg>
