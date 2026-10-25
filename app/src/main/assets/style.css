@@ -144,3 +144,34 @@ body.theme-dark .seal-status span{color:#e86770;text-shadow:none}
 @keyframes lockdownBlink{0%,100%{opacity:.35}48%{opacity:1}62%{opacity:.55}}
 @keyframes lockdownCore{0%,100%{opacity:.6;transform:scale(.92)}42%{opacity:1;transform:scale(1.12)}}
 @media(prefers-reduced-motion:reduce){.seal-pulse,.seal-pulse:after,.lockdown-ambient,.lockdown-symbol{animation:none}}
+
+/* V2.6: Replace misaligned HTML seal decorations with the actual
+   composited video. All coordinates use the unmodified 1054x1492 cover. */
+#cover-stage .seal-motion-video{
+ position:absolute;display:block;
+ left:37.00%;top:55.965%;width:40.418%;height:15.818%;
+ z-index:7;pointer-events:none;object-fit:fill;
+ border:0;opacity:0;transition:opacity .25s ease;
+}
+#cover-stage.has-seal-video .seal-motion-video{opacity:1}
+#cover-stage .seal-trigger{
+ left:42.8%;top:59.1%;width:14%;height:11.6%;
+ z-index:9;position:absolute;border:0;border-radius:50%;background:transparent;
+ touch-action:manipulation;
+}
+#cover-stage .seal-status,#cover-stage .seal-pulse{display:none!important}
+body.theme-dark #cover-stage .seal-motion-video{filter:brightness(.72) contrast(1.04) saturate(.85)}
+/* Angular comic-book inspired entry wipe; 700ms and noninteractive. */
+.entry-transition{position:fixed;inset:0;z-index:115;pointer-events:none;visibility:hidden;overflow:hidden;
+ background:#141217;clip-path:polygon(-28% 0,-9% 0,9% 100%,-10% 100%);}
+.entry-transition.is-active{visibility:visible;animation:entrySwipe .73s cubic-bezier(.45,.03,.35,1) both}
+.entry-transition .entry-strike{position:absolute;width:11vw;height:160vh;top:-30vh;left:26vw;
+ background:#ed2947;transform:rotate(-16deg);box-shadow:12px 0 #ffffff18}
+.entry-transition .entry-strike.second{left:68vw;width:4vw;background:#fff1e6;box-shadow:none}
+@keyframes entrySwipe{
+ 0%{clip-path:polygon(-32% 0,-12% 0,8% 100%,-12% 100%)}
+ 42%{clip-path:polygon(-12% 0,110% 0,110% 100%,-12% 100%)}
+ 58%{clip-path:polygon(-12% 0,110% 0,110% 100%,-12% 100%)}
+ 100%{clip-path:polygon(112% 0,136% 0,136% 100%,112% 100%)}
+}
+@media(prefers-reduced-motion:reduce){.entry-transition.is-active{animation:entrySwipe .3s linear both}}
