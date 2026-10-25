@@ -245,14 +245,55 @@ document.addEventListener('pointerdown',()=>{
  try{clickAudio.pause();clickAudio.currentTime=0;clickAudio.play().catch(()=>{});}catch(e){}
 },{passive:true,capture:true});
 
+
+const REASSURER_PROMPT='Based on the situation described above, create a personalized Reassurer that addresses my concerns, neutralizes the internal negotiation, and helps me return to decisive action.';
+async function copyLockdownForChatGPT(){
+ if(!state.lockdownActive)return;
+ const note=Q('lockdown-notes').value.trim();
+ if(!note){
+  Q('lockdown-instruction').textContent='Describe the disruption first, then copy it for ChatGPT.';
+  Q('lockdown-notes').focus();
+  return;
+ }
+ const full=note+'\n\n"'+REASSURER_PROMPT+'"';
+ if(window.NativeAudio&&typeof window.NativeAudio.copyText==='function'){
+  try{
+   if(window.NativeAudio.copyText(full)){toast('Disruption + Reassurer prompt copied ✓');return;}
+  }catch(e){}
+ }
+ try{
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+   await navigator.clipboard.writeText(full);toast('Copied for ChatGPT ✓');return;
+  }
+ }catch(e){}
+ const input=document.createElement('textarea');input.value=full;input.setAttribute('readonly','');
+ input.style.cssText='position:fixed;top:-2000px;opacity:0';
+ document.body.append(input);input.select();
+ let copied=false;try{copied=document.execCommand('copy');}catch(e){}
+ input.remove();
+ toast(copied?'Copied for ChatGPT ✓':'Unable to copy. Select the text manually.');
+}
+
 /* Seal protection · five deliberate taps within five seconds. */
 function setLockdownView(active){
  const shade=Q('lockdown-shade');
  shade.classList.toggle('open',active);
  shade.setAttribute('aria-hidden',active?'false':'true');
  if(active)Q('lockdown-notes').value=state.lockdownDraft||'';
- if(window.NativeAudio&&typeof window.NativeAudio.setLockdown==='function'){
+ const nativeLockdown=window.NativeAudio&&typeof window.NativeAudio.setLockdown==='function';
+ if(nativeLockdown){
   try{window.NativeAudio.setLockdown(active);}catch(e){}
+ }
+ // Local browser preview fallback. Android uses its native looping MediaPlayer.
+ const music=Q('web-lockdown'),normalMusic=Q('web-audio');
+ if(!nativeLockdown){
+   if(active){
+     if(normalMusic)normalMusic.pause();
+     if(music){music.currentTime=0;music.play().catch(()=>{});}
+   }else{
+     if(music){music.pause();music.currentTime=0;}
+     if(normalMusic&&!isMuted())normalMusic.play().catch(()=>{});
+   }
  }
  syncCoverVideo();
 }
@@ -268,7 +309,7 @@ function completeLockdown(){
  state.overrideLog.push({time:new Date().toISOString(),note:value});
  state.lockdownActive=false;state.lockdownDraft='';
  persist();setLockdownView(false);
- Q('lockdown-instruction').textContent='Write at least one line to override. This note will be saved on this device.';
+ Q('lockdown-instruction').textContent='Write at least one line to override. Your notes are stored on this device.';
  toast('Override complete. Seal intact.');
 }
 const sealTrigger=Q('seal-trigger');
