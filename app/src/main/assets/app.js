@@ -195,10 +195,30 @@ function openHistory(key){selectedArchive=key;const d=state.days[key].snapshot||
  Object.assign(v.style,{left:s.x+'%',top:s.y+'%',width:s.w+'%',height:s.h+'%'});
  const content=document.createElement('span');content.textContent=d.slots[i]||'';v.append(content);
  if(d.done[i]){const check=document.createElement('b');check.textContent='✓';v.append(check);}layer.append(v);
- });hide('gallery-shade');show('history-shade');
+ });renderHistoryAttachments(key);hide('gallery-shade');show('history-shade');
  const poster=Q('history-board'); poster.style.width='';
  historyBaseWidth=poster.getBoundingClientRect().width;historyZoom=1;
  Q('history-scroll').scrollTop=0;Q('history-scroll').scrollLeft=0;
+}
+function renderHistoryAttachments(date){
+ mediaReload();
+ const host=Q('history-media-list');host.textContent='';
+ let count=0;
+ for(let i=0;i<8;i++){
+  const attachments=mediaItems('slot'+i,date);
+  if(!attachments.length)continue;
+  count+=attachments.length;
+  const block=document.createElement('section');block.className='history-media-section';
+  const title=document.createElement('strong');title.textContent=SECTIONS[i].name;
+  const grid=document.createElement('div');grid.className='media-grid';
+  attachments.forEach(item=>grid.append(makeMediaCard(item,true)));
+  block.append(title,grid);host.append(block);
+ }
+ if(!count){
+  const empty=document.createElement('small');empty.className='media-empty';
+  empty.textContent='No photo or video attachments saved for this day.';
+  host.append(empty);
+ }
 }
 function changeHistoryZoom(direction){
  if(!Q('history-shade').classList.contains('open'))return;
@@ -372,7 +392,7 @@ function pickMedia(kind,date,category){
  try{window.NativeAudio.pickInMotionMedia(kind,date,category);}
  catch(e){toast('Could not open the media picker');}
 }
-function makeMediaCard(item){
+function makeMediaCard(item,readonly=false){
  const tile=document.createElement('div');tile.className='media-tile';
  const button=document.createElement('button');button.type='button';button.className='media-open';
  const isVideo=item.kind==='video';const name=String(item.name||'').slice(0,90);
@@ -402,7 +422,7 @@ function makeMediaCard(item){
    }else toast('Could not remove this attachment');
   }catch(e){toast('Could not remove attachment')}
  });
- tile.append(button,del);
+ tile.append(button);if(!readonly)tile.append(del);
  return tile;
 }
 function playSavedMedia(id){
