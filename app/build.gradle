@@ -10,8 +10,8 @@ android {
         applicationId 'com.inmotion.personalagenda.v21'
         minSdk 24
         targetSdk 34
-        versionCode 16
-        versionName '2.7.7'
+        versionCode 17
+        versionName '2.8.0'
     }
 
     buildTypes {
