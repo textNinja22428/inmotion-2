@@ -324,10 +324,26 @@ const workTrigger=Q('work-trigger');
 if(workTrigger){
  for(const type of ['pointerup','dblclick'])workTrigger.addEventListener(type,e=>e.stopPropagation());
 }
-/* V2.9 Work Journal. Dates are generated on demand (30 at a time).
-   Photos live in the private Android app directory, not localStorage. */
-let workOpen=false,workLoaded=30,workPhotos=[],workExpanded=new Set(),workPhotoCache=new Map();
-const workDate=n=>{const d=new Date();d.setHours(12,0,0,0);d.setDate(d.getDate()-n);return todayKey(d);};
+/* IN MOTION 3.0 — Future-facing Work, E,E and Study journals.
+   Private photos are keyed by journal and date in Android, notes in localStorage.
+   Past entries remain stored but do not fill the upcoming date timeline. */
+const JOURNAL_CONFIG={
+ work:{title:'WORK JOURNAL',eyebrow:'IN MOTION / PROFESSIONAL RECORD',
+       hero:'work_hero.jpg',caption:'MAKE TODAY COUNT',
+       intro:'Your work. Your progress. Your record.'},
+ ee:{title:'E, E · DAILY MOVEMENT',eyebrow:'EAT / PROPER / EXERCISE',
+     hero:'ee_hero.jpg',caption:'BUILD YOUR BODY',
+     intro:'Eat properly. Train consistently. Capture what moved you forward.'},
+ study:{title:'STUDY JOURNAL',eyebrow:'IN MOTION / LEARN & IMPROVE',
+        hero:'study_hero.jpg',caption:'LEARN. APPLY. REPEAT.',
+        intro:'Show up, study and keep evidence of your progress.'}
+};
+const JOURNAL_NOTES_KEY='inmotion_journal_notes_v3';
+let workOpen=false,journalMode='work',workLoaded=21,workPhotos=[],
+    workExpanded=new Set(),workPhotoCache=new Map();
+let journalNotes={};
+try{journalNotes=JSON.parse(localStorage.getItem(JOURNAL_NOTES_KEY)||'{}')||{};}catch(e){journalNotes={};}
+const workDate=n=>{const d=new Date();d.setHours(12,0,0,0);d.setDate(d.getDate()+n);return todayKey(d);};
 const workLabel=k=>new Intl.DateTimeFormat('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(new Date(k+'T12:00:00'));
 function workReload(){
  try{workPhotos=JSON.parse(window.NativeAudio.listWorkPhotos());if(!Array.isArray(workPhotos))workPhotos=[];}
@@ -343,59 +359,124 @@ function workImage(id){
  }catch(e){}
  return '';
 }
+function journalStoredNote(key){
+ return String(journalNotes[journalMode]?.[key]||'');
+}
+function journalSaveNote(dayKey,text){
+ if(!journalNotes[journalMode]||typeof journalNotes[journalMode]!=='object')journalNotes[journalMode]={};
+ journalNotes[journalMode][dayKey]=String(text||'').slice(0,16000);
+ try{localStorage.setItem(JOURNAL_NOTES_KEY,JSON.stringify(journalNotes));toast('Journal note saved ✓');}
+ catch(e){toast('Cannot save note — device storage full');}
+}
 function workRender(){
  const holder=Q('work-days');holder.textContent='';
+ const relevant=workPhotos.filter(x=>(x.category||'work')===journalMode);
  const keys=Array.from({length:workLoaded},(_,n)=>workDate(n));
- for(const image of workPhotos)if(image&&image.date&&!keys.includes(image.date))keys.push(image.date);
- keys.sort().reverse();
+ // Allow every future date with saved photos/notes, without creating infinite empty rows.
+ for(const item of relevant)if(item.date>=todayKey()&&!keys.includes(item.date))keys.push(item.date);
+ for(const key of Object.keys(journalNotes[journalMode]||{}))
+  if(key>=todayKey()&&!keys.includes(key))keys.push(key);
+ keys.sort();
  for(const dayKey of keys){
-  const pictures=workPhotos.filter(x=>x.date===dayKey);
+  const pics=relevant.filter(x=>x.date===dayKey);
+  const note=journalStoredNote(dayKey);
   const card=document.createElement('section');card.className='work-day';
   const button=document.createElement('button');button.className='work-day-head';button.type='button';
   const header=document.createElement('span'),title=document.createElement('strong'),small=document.createElement('small');
-  title.textContent=workLabel(dayKey);small.textContent=pictures.length+' PHOTO'+(pictures.length===1?'':'S');
+  title.textContent=workLabel(dayKey);
+  small.textContent=pics.length+' PHOTOS · '+(note.trim()?'NOTE SAVED':'NO NOTE');
   header.append(title,small);
   const arrow=document.createElement('span');arrow.className='work-chevron';arrow.textContent='›';
   button.append(header,arrow);
   const body=document.createElement('div');body.className='work-day-body';
-  function expand(){
+  function populate(){
    body.textContent='';
-   if(!pictures.length){const blank=document.createElement('div');blank.className='work-empty';blank.textContent='No photos for this day yet.';body.append(blank);}
-   else{
+   const noteWrap=document.createElement('div');noteWrap.className='work-day-note';
+   const label=document.createElement('label');label.textContent='DAILY JOURNAL / '+dayKey;
+   const area=document.createElement('textarea');area.value=journalStoredNote(dayKey);
+   area.placeholder='What did you do, learn, or prepare for? Optional.';
+   const save=document.createElement('button');save.type='button';save.textContent='SAVE NOTE';
+   save.onclick=()=>{journalSaveNote(dayKey,area.value);small.textContent=pics.length+' PHOTOS · '+(area.value.trim()?'NOTE SAVED':'NO NOTE');};
+   const hint=document.createElement('small');hint.textContent='Notes are private to this device.';
+   noteWrap.append(label,area,save,hint);body.append(noteWrap);
+   if(pics.length){
     const grid=document.createElement('div');grid.className='work-thumbs';
-    pictures.forEach(p=>{
+    pics.forEach(p=>{
      const tile=document.createElement('button');tile.className='work-thumb';tile.type='button';
-     const img=document.createElement('img');img.loading='lazy';img.alt='Work photo';
-     img.src=workImage(p.id);
-     tile.append(img);tile.onclick=()=>openWorkPhoto(p.id);grid.append(tile);
+     const image=document.createElement('img');image.loading='lazy';image.alt='Saved '+journalMode+' photo';
+     image.src=workImage(p.id);tile.append(image);
+     tile.onclick=()=>openWorkPhoto(p.id);grid.append(tile);
     });body.append(grid);
+   }else{
+    const blank=document.createElement('div');blank.className='work-empty';
+    blank.textContent='No photos for this date yet.';body.append(blank);
    }
-   const add=document.createElement('button');add.className='work-add-day';add.textContent='+ ADD PHOTOS TO '+dayKey;add.onclick=()=>addWorkPhotos(dayKey);body.append(add);
+   const add=document.createElement('button');add.className='work-add-day';
+   add.textContent='+ ADD PHOTOS TO '+dayKey;
+   add.onclick=()=>addWorkPhotos(dayKey);body.append(add);
   }
-  button.onclick=()=>{const show=!card.classList.contains('open');card.classList.toggle('open',show);if(show){workExpanded.add(dayKey);expand();}else workExpanded.delete(dayKey);};
+  button.onclick=()=>{
+   const expanded=!card.classList.contains('open');
+   card.classList.toggle('open',expanded);
+   if(expanded){workExpanded.add(dayKey);populate();}else workExpanded.delete(dayKey);
+  };
   card.append(button,body);holder.append(card);
-  if(workExpanded.has(dayKey)||(!workExpanded.size&&dayKey===todayKey())){card.classList.add('open');expand();}
+  if(workExpanded.has(dayKey)||(!workExpanded.size&&dayKey===todayKey())){
+   card.classList.add('open');populate();
+  }
  }
- Q('work-more').hidden=workLoaded>=3650;
+ Q('work-more').hidden=workLoaded>=730;
+}
+function openFocusJournal(mode){
+ if(page!=='board'||state.lockdownActive||!JOURNAL_CONFIG[mode])return;
+ openJournal(mode);
 }
 function openWorkJournal(){
  if(page!=='cover'||state.lockdownActive)return;
- workOpen=true;Q('work-date').value=todayKey();
- workReload();workRender();show('work-shade');syncCoverVideo();
- if(window.NativeAudio?.setWorkMode)try{window.NativeAudio.setWorkMode(true);}catch(e){}
+ openJournal('work');
+}
+function openJournal(mode){
+ const config=JOURNAL_CONFIG[mode];if(!config)return;
+ journalMode=mode;workOpen=true;workLoaded=21;workExpanded=new Set();
+ Q('journal-eyebrow').textContent=config.eyebrow;
+ Q('journal-title').textContent=config.title;
+ Q('journal-hero').src=config.hero;
+ Q('journal-hero-label').textContent=config.caption;
+ Q('journal-intro').textContent=config.intro;
+ Q('work-date').value=todayKey();Q('work-date').min=todayKey();
+ Q('work-date').removeAttribute('max');
+ workReload();workRender();show('work-shade');
+ if(window.NativeAudio?.setJournalMode){
+  try{window.NativeAudio.setJournalMode(mode);}catch(e){}
+ }else if(window.NativeAudio?.setWorkMode){
+  try{window.NativeAudio.setWorkMode(mode==='work');}catch(e){}
+ }
+ syncCoverVideo();
 }
 function closeWorkJournal(){
- closeWorkPhoto();workOpen=false;hide('work-shade');syncCoverVideo();
- if(window.NativeAudio?.setWorkMode)try{window.NativeAudio.setWorkMode(false);}catch(e){}
+ closeWorkPhoto();workOpen=false;hide('work-shade');
+ if(window.NativeAudio?.setJournalMode){
+  try{window.NativeAudio.setJournalMode('');}catch(e){}
+ }else if(window.NativeAudio?.setWorkMode){
+  try{window.NativeAudio.setWorkMode(false);}catch(e){}
+ }
+ syncCoverVideo();
 }
-function loadMoreWorkDays(){const y=Q('work-scroll').scrollTop;workLoaded=Math.min(workLoaded+30,3650);workRender();Q('work-scroll').scrollTop=y;}
+function loadMoreWorkDays(){
+ const scroller=Q('work-scroll'),scroll=scroller.scrollTop;
+ workLoaded=Math.min(workLoaded+21,730);workRender();scroller.scrollTop=scroll;
+}
 function addWorkPhotos(date){
  const chosen=date||Q('work-date').value||todayKey();
- if(!/^\d{4}-\d{2}-\d{2}$/.test(chosen)||chosen>todayKey()){toast('Choose today or a past date');return;}
- if(!window.NativeAudio?.pickWorkPhotos){toast('Photo picker requires Android');return;}
- try{window.NativeAudio.pickWorkPhotos(chosen);}catch(e){toast('Photo picker unavailable');}
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(chosen)||chosen<todayKey()){
+  toast('Select today or a future date');return;
+ }
+ if(!window.NativeAudio?.pickWorkPhotos){toast('Android photo picker unavailable');return;}
+ try{window.NativeAudio.pickWorkPhotos(chosen,journalMode);}catch(e){toast('Photo picker unavailable');}
 }
-window.onWorkPhotosChanged=message=>{workReload();workPhotoCache.clear();if(workOpen){workRender();toast(message||'Photos saved');}};
+window.onWorkPhotosChanged=message=>{
+ workReload();workPhotoCache.clear();if(workOpen){workRender();toast(message||'Photos saved');}
+};
 function openWorkPhoto(id){
  const src=workImage(id);if(!src){toast('Photo unavailable');return;}
  Q('work-lightbox-photo').src=src;show('work-lightbox');
