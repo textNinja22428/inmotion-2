@@ -9,6 +9,7 @@
 <section id="cover-page" class="page" aria-label="IN MOTION cover">
   <div id="date-panel" class="date-panel"><div class="date-eyebrow">IN MOTION / TODAY MATTERS</div><div id="time-greeting" class="time-greeting" aria-live="polite"></div><div id="date-weekday" class="date-weekday"></div><div id="date-long" class="date-long"></div></div>
   <div class="image-stage" id="cover-stage"><img class="base-image cover-art" src="cover.png" alt="IN MOTION cover" draggable="false"><video id="cover-video" class="cover-motion-video" autoplay muted loop playsinline webkit-playsinline preload="auto" aria-hidden="true" disablepictureinpicture><source src="cover_character_motion.mp4" type="video/mp4"></video><img id="bolt-glow" src="lightning_glow.png" alt="" draggable="false"><div id="spark-trail" aria-hidden="true"><span></span></div><div id="bolt-flash" aria-hidden="true"></div><div id="leaves" aria-hidden="true"></div><div id="birds-flight" aria-hidden="true"><svg viewBox="0 0 60 34"><path d="M2 17 Q16 0 28 17 Q38 5 58 16"/></svg><svg viewBox="0 0 60 34"><path d="M2 18 Q20 6 30 17 Q41 0 58 15"/></svg></div><video id="seal-video" class="seal-motion-video" autoplay muted loop playsinline webkit-playsinline preload="auto" aria-hidden="true" disablepictureinpicture><source src="seal_wide.mp4" type="video/mp4"></video><button id="seal-trigger" class="seal-trigger" type="button" aria-label="Tap seal five times to activate lockdown"></button></div>
+  <button id="agent-launch" class="agent-launch" type="button" onclick="openInMotionAgent()" aria-label="Open IN MOTION Personal Intelligence"><span class="agent-launch-mark">✦</span><span>ASK IN MOTION</span></button>
   <button class="floating-control control-settings" aria-label="Settings" onclick="openSettings()"><span class="gear-icon">⚙</span></button>
   <button class="gallery-dock" type="button" onclick="openGallery()" aria-label="Saved day gallery"><span class="gallery-dock-icon">▦</span><span class="gallery-dock-label">GALLERY<small id="gallery-count">YOUR SAVED DAYS</small></span><span class="gallery-dock-arrow">›</span></button>
   
@@ -20,7 +21,7 @@
 </section>
 </main>
 <div id="entry-transition" class="entry-transition" aria-hidden="true"><span class="entry-strike"></span><span class="entry-strike second"></span></div>
-<div id="modal-shade" class="shade" aria-hidden="true"><section class="editor-card" role="dialog" aria-modal="true" aria-labelledby="editor-title"><header class="editor-header"><div><div class="editor-overline" id="editor-overline">TODAY / SLOT</div><h1 id="editor-title">SECTION</h1></div><button class="icon-close" onclick="closeEditor()" aria-label="Close">×</button></header><textarea id="editor-input" placeholder="Write your notes here..." spellcheck="false"></textarea><label class="completed-row"><span><strong>MARK COMPLETE</strong><small>Mark this slot as finished</small></span><input id="slot-complete" type="checkbox"><span class="complete-check">✓</span></label><div class="editor-actions"><button class="cancel-btn" onclick="closeEditor()">CANCEL</button><button class="save-btn" onclick="saveEditor()">SAVE</button></div></section></div>
+<div id="modal-shade" class="shade" aria-hidden="true"><section class="editor-card" role="dialog" aria-modal="true" aria-labelledby="editor-title"><header class="editor-header"><div><div class="editor-overline" id="editor-overline">TODAY / SLOT</div><h1 id="editor-title">SECTION</h1></div><button class="icon-close" onclick="closeEditor()" aria-label="Close">×</button></header><div class="voice-edit-bar"><span>VOICE NOTES</span><button id="editor-mic" class="voice-mic-btn" type="button" onclick="startInMotionSpeech('editor')" aria-label="Dictate into this note"><span aria-hidden="true">🎙</span> SPEAK TO WRITE</button></div><textarea id="editor-input" placeholder="Write or dictate your notes here..." spellcheck="false"></textarea><label class="completed-row"><span><strong>MARK COMPLETE</strong><small>Mark this slot as finished</small></span><input id="slot-complete" type="checkbox"><span class="complete-check">✓</span></label><div class="editor-actions"><button class="cancel-btn" onclick="closeEditor()">CANCEL</button><button class="save-btn" onclick="saveEditor()">SAVE</button></div></section></div>
 <div id="settings-shade" class="shade" aria-hidden="true"><section class="settings-card" role="dialog" aria-modal="true" aria-labelledby="settings-title"><header class="editor-header"><div><div class="editor-overline">IN MOTION</div><h1 id="settings-title">SETTINGS</h1></div><button class="icon-close" onclick="closeSettings()" aria-label="Close">×</button></header>
 <label class="setting-row"><span><strong>Background music</strong><small>Beneath the Mask · instrumental</small></span><input id="music-enabled" class="switch-input" type="checkbox"><span class="switch-track"></span></label>
 <label class="setting-row"><span><strong>Dark mode</strong><small>Deep charcoal · warm amber</small></span><input id="dark-enabled" class="switch-input" type="checkbox"><span class="switch-track"></span></label>
@@ -42,13 +43,28 @@
       <p>Once completed, copy the entire text box and paste it into ChatGPT with the following instruction:</p>
       <blockquote>"Based on the situation described above, create a personalized Reassurer that addresses my concerns, neutralizes the internal negotiation, and helps me return to decisive action."</blockquote>
     </div>
-    <label for="lockdown-notes">DISRUPTION NOTEPAD</label>
+    <div class="voice-edit-bar"><label for="lockdown-notes">DISRUPTION NOTEPAD</label><button class="voice-mic-btn" type="button" onclick="startInMotionSpeech('lockdown')">🎙 DICTATE</button></div>
     <textarea id="lockdown-notes" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Identify the disruption. Write what is stopping you and what you need to hear."></textarea>
     <p id="lockdown-instruction" class="lockdown-instruction">Write at least one line to override. Your notes are stored on this device.</p>
     <div class="lockdown-actions"><button id="lockdown-copy" class="lockdown-copy" type="button" onclick="copyLockdownForChatGPT()">COPY FOR CHATGPT</button><button id="lockdown-enter" class="lockdown-enter" type="button" onclick="completeLockdown()">ENTER / RESTORE CONTROL</button></div>
   </div>
 </div>
 <div id="stopwatch-shade" class="shade" aria-hidden="true"><section class="stopwatch-card" role="dialog" aria-modal="true" aria-labelledby="stopwatch-title"><header class="editor-header"><div><div class="editor-overline">IN MOTION / FOCUS CLOCK</div><h1 id="stopwatch-title">STOPWATCH</h1></div><button type="button" class="icon-close" onclick="closeStopwatch()" aria-label="Close stopwatch">×</button></header><div id="stopwatch-display" class="stopwatch-display" role="timer" aria-live="off">00:00:00.00</div><div class="stopwatch-actions"><button type="button" class="cancel-btn" onclick="resetStopwatch()">RESET</button><button type="button" class="save-btn" id="stopwatch-toggle" onclick="toggleStopwatch()">START</button></div><p class="settings-note">The stopwatch keeps its elapsed time even when this panel is closed or the app is reopened.</p></section></div>
+<div id="agent-shade" class="shade" aria-hidden="true">
+  <section class="agent-card" role="dialog" aria-modal="true" aria-labelledby="agent-title">
+    <header class="editor-header"><div><div class="editor-overline">IN MOTION / PERSONAL INTELLIGENCE</div><h1 id="agent-title">ASK IN MOTION <span class="agent-title-spark">✦</span></h1></div><button class="icon-close" type="button" onclick="closeInMotionAgent()" aria-label="Close personal intelligence">×</button></header>
+    <div class="agent-private"><span>● LOCAL MEMORY</span><span>NOT CONNECTED TO AI YET</span></div>
+    <p class="agent-description">Search your daily notes, completed tasks, Gallery history and Guardian override log. Everything stays on this device.</p>
+    <div class="agent-suggestions">
+      <button type="button" onclick="askAgentPreset('today')">TODAY</button>
+      <button type="button" onclick="askAgentPreset('history')">HISTORY</button>
+      <button type="button" onclick="askAgentPreset('overrides')">OVERRIDES</button>
+    </div>
+    <div id="agent-messages" class="agent-messages" role="log" aria-live="polite"></div>
+    <div class="agent-compose"><textarea id="agent-input" rows="2" placeholder="Ask about your notes, or search by keyword..." spellcheck="false"></textarea><button class="agent-voice-btn" type="button" onclick="startInMotionSpeech('agent')" aria-label="Speak your question">🎙</button><button class="agent-send-btn" type="button" onclick="submitAgentQuery()">ASK</button></div>
+    <div class="agent-footer"><span>LOCAL SEARCH · NO CLOUD SYNC</span><button type="button" onclick="clearInMotionChat()">CLEAR CHAT</button></div>
+  </section>
+</div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <audio id="web-audio" src="beneath_the_mask_instrumental.mp3" preload="none" loop></audio><audio id="web-click" src="select_sound_loud.wav" preload="auto"></audio><audio id="web-lockdown" src="guardians_lockdown.mp3" preload="none" loop></audio>
 <script src="app.js"></script>
