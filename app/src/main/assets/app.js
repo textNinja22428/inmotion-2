@@ -437,6 +437,7 @@ function openWorkJournal(){
 }
 function openJournal(mode){
  const config=JOURNAL_CONFIG[mode];if(!config)return;
+ Q('program-launch').hidden=mode!=='ee';
  journalMode=mode;workOpen=true;workLoaded=21;workExpanded=new Set();
  Q('journal-eyebrow').textContent=config.eyebrow;
  Q('journal-title').textContent=config.title;
@@ -454,7 +455,7 @@ function openJournal(mode){
  syncCoverVideo();
 }
 function closeWorkJournal(){
- closeWorkPhoto();workOpen=false;hide('work-shade');
+ closeProgram();closeWorkPhoto();workOpen=false;hide('work-shade');
  if(window.NativeAudio?.setJournalMode){
   try{window.NativeAudio.setJournalMode('');}catch(e){}
  }else if(window.NativeAudio?.setWorkMode){
@@ -484,6 +485,54 @@ function openWorkPhoto(id){
 function closeWorkPhoto(){
  hide('work-lightbox');Q('work-lightbox-photo').removeAttribute('src');
 }
+
+/* IN MOTION 3.0.1: E,E program is a private, replaceable image.
+   Default remains a bundled asset; Android stores the replacement in filesDir. */
+let programOpen=false;
+function loadProgramImage(){
+ const img=Q('program-image');
+ let replacement='';
+ if(window.NativeAudio&&typeof window.NativeAudio.getProgramImageData==='function'){
+  try{replacement=window.NativeAudio.getProgramImageData();}catch(e){}
+ }
+ if(replacement&&replacement.startsWith('data:image/jpeg;base64,')){
+  img.onerror=null;
+  img.src=replacement;
+ }else{
+  img.onerror=()=>{img.onerror=null;img.src='program_default.svg';};
+  img.src='program_default.jpg';
+ }
+}
+function openProgram(){
+ if(!workOpen||journalMode!=='ee'||state.lockdownActive)return;
+ programOpen=true;
+ loadProgramImage();
+ show('program-shade');
+}
+function closeProgram(){
+ if(!programOpen)return;
+ programOpen=false;hide('program-shade');
+ Q('program-image').removeAttribute('src');
+}
+function changeProgramImage(){
+ if(!programOpen)return;
+ if(!window.NativeAudio||typeof window.NativeAudio.pickProgramImage!=='function'){
+  toast('Please open this in the Android app.');return;
+ }
+ try{window.NativeAudio.pickProgramImage();}catch(e){toast('Could not open the image picker.');}
+}
+function resetProgramImage(){
+ if(!programOpen)return;
+ if(window.NativeAudio&&typeof window.NativeAudio.resetProgramImage==='function'){
+  try{window.NativeAudio.resetProgramImage();}catch(e){toast('Could not reset program.');return;}
+ }
+ loadProgramImage();toast('Default training program restored');
+}
+window.onProgramImageChanged=function(ok){
+ if(!programOpen)return;
+ if(ok){loadProgramImage();toast('Training program image saved ✓');}
+ else toast('No program image was saved');
+};
 
 /* AI can be called only after the user configures a private HTTPS proxy.
    Memory is not uploaded unless the checkbox is ticked. */
@@ -811,7 +860,7 @@ Q('lockdown-notes').addEventListener('input',()=>{
  state.lockdownDraft=Q('lockdown-notes').value;persist();
 });
 
-window.handleAndroidBack=()=>{if(state.lockdownActive)return true;if(Q('work-lightbox').classList.contains('open')){closeWorkPhoto();return true;}if(workOpen){closeWorkJournal();return true;}if(Q('agent-shade').classList.contains('open')){closeInMotionAgent();return true;}if(Q('stopwatch-shade').classList.contains('open')){closeStopwatch();return true;}if(Q('modal-shade').classList.contains('open')){closeEditor();return true;}
+window.handleAndroidBack=()=>{if(state.lockdownActive)return true;if(programOpen){closeProgram();return true;}if(Q('work-lightbox').classList.contains('open')){closeWorkPhoto();return true;}if(workOpen){closeWorkJournal();return true;}if(Q('agent-shade').classList.contains('open')){closeInMotionAgent();return true;}if(Q('stopwatch-shade').classList.contains('open')){closeStopwatch();return true;}if(Q('modal-shade').classList.contains('open')){closeEditor();return true;}
  if(Q('settings-shade').classList.contains('open')){closeSettings();return true;}
  if(Q('history-shade').classList.contains('open')){closeHistory();return true;}
  if(Q('gallery-shade').classList.contains('open')){closeGallery();return true;}
