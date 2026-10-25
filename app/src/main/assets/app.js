@@ -407,10 +407,12 @@ function closeWorkPhoto(){
 /* AI can be called only after the user configures a private HTTPS proxy.
    Memory is not uploaded unless the checkbox is ticked. */
 let aiAvailable=false,aiPending=false;
+const DEFAULT_INMOTION_WORKER_URL='https://inmotion-private-ai.batinkoraykapti.workers.dev/chat';
 function loadAIConnection(){
+ Q('ai-endpoint').value=DEFAULT_INMOTION_WORKER_URL;
  try{const info=JSON.parse(window.NativeAudio.getAIConfiguration());
   aiAvailable=!!info.configured;
-  Q('ai-endpoint').value=info.endpoint||'';
+  Q('ai-endpoint').value=info.endpoint||DEFAULT_INMOTION_WORKER_URL;
  }catch(e){aiAvailable=false;}
  Q('agent-connect-status').textContent=aiAvailable?'GPT SETUP SAVED · CONNECTION UNTESTED':'LOCAL MODE · AI NOT CONFIGURED';
  const intro=Q('agent-shade').querySelector('.agent-description');
