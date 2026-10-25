@@ -336,3 +336,47 @@ body.theme-dark #cover-stage .seal-cover-cleanup{
  background:radial-gradient(ellipse at center,#b8b8b8 0%,#b8b8b8 59%,#b8b8b8ee 70%,#b8b8b800 100%)!important;
 }
 body.theme-dark #cover-stage .seal-status-restored{color:#ef7a83;text-shadow:none}
+
+/* IN MOTION 2.7.3 — correct *bottom* seal, physical image replacement.
+   The builder bakes away the old symbol and renders this synchronized
+   video from y=1140 through the end of the 1054x1492 cover image.
+   No clipped rays, gradient patches, masks, or separate status labels. */
+#cover-stage .seal-motion-video{
+ position:absolute!important;
+ inset:auto!important;
+ left:0!important;
+ top:76.407507%!important;
+ width:100%!important;
+ height:23.592493%!important;
+ max-width:none!important;
+ max-height:none!important;
+ aspect-ratio:1054/352;
+ object-fit:fill!important;
+ object-position:center!important;
+ clip-path:none!important;
+ -webkit-clip-path:none!important;
+ mask-image:none!important;
+ -webkit-mask-image:none!important;
+ mix-blend-mode:normal!important;
+ filter:none!important;
+ transform:none!important;
+ pointer-events:none!important;
+ z-index:7!important;
+}
+#cover-stage .seal-trigger{
+ position:absolute!important;
+ left:43.0%!important;
+ top:80.9%!important;
+ width:14.0%!important;
+ height:14.8%!important;
+ border:0!important;
+ border-radius:44%!important;
+ background:transparent!important;
+ touch-action:manipulation!important;
+ z-index:9!important;
+}
+#cover-stage .seal-cover-cleanup,
+#cover-stage .seal-status-restored {display:none!important}
+body.theme-dark #cover-stage .seal-motion-video{
+ filter:brightness(.72) contrast(1.04) saturate(.85)!important;
+}
