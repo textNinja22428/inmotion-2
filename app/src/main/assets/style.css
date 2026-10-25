@@ -714,3 +714,60 @@ body.theme-dark #cover-stage .seal-motion-video{
 #work-shade{z-index:95}
 #work-lightbox{z-index:142}
 #lockdown-shade{z-index:135}
+
+/* IN MOTION 3.0 — Two animated focus portals above the daily sheet.
+   Poster hotspots stay proportionally aligned because poster and hotspots
+   remain inside the same aspect-ratio stage, translated together. */
+#board-page #board-stage{
+  width:min(96vw,calc((100dvh - 230px) * 1055 / 1490))!important;
+  top:calc(50% + 70px)!important;
+}
+.board-media-strip{
+  position:absolute;
+  z-index:9;
+  top:clamp(70px,10dvh,110px);
+  left:50%;transform:translateX(-50%);
+  width:min(96vw,540px);height:clamp(92px,14dvh,128px);
+  display:grid;grid-template-columns:1fr 1fr;gap:8px;
+}
+.board-media-tile{
+  position:relative;overflow:hidden;padding:0;border:1px solid #ccb581;
+  background:#f4f3ee;border-radius:12px;isolation:isolate;
+  box-shadow:0 3px 10px #00000018;
+}
+.board-media-tile video{
+  position:absolute;inset:0;width:100%;height:100%;display:block;
+  object-fit:contain;object-position:center;pointer-events:none;
+}
+.board-media-tile::after{
+  content:'';position:absolute;inset:55% 0 0;
+  background:linear-gradient(transparent,#00000085);z-index:1;
+  pointer-events:none;
+}
+.board-media-tile span{
+  position:absolute;z-index:2;bottom:6px;left:7px;right:7px;text-align:left;
+  color:white;font:800 clamp(10px,3vw,13px)/1 Arial,sans-serif;
+  letter-spacing:.45px;text-shadow:0 1px 3px black;pointer-events:none;
+}
+body.theme-dark .board-media-tile{background:#242424;border-color:#aa925d}
+.work-day-note{display:flex;flex-direction:column;gap:7px;margin:11px 0 7px}
+.work-day-note label{font:800 10px Arial,sans-serif;color:#bea569;letter-spacing:.8px}
+.work-day-note textarea{
+  width:100%;min-height:83px;resize:vertical;border:1px solid #7d6e52;
+  border-radius:8px;background:#161b1d;color:#eee9dd;padding:11px;
+  font:13px/1.5 Arial,sans-serif;
+}
+.work-day-note button{
+  align-self:flex-end;min-height:34px;padding:7px 12px;
+  color:#171612;background:#d6b477;border:0;border-radius:7px;
+  font:800 11px Arial,sans-serif;
+}
+.work-day-note small{font:10px Arial,sans-serif;color:#a8a18f}
+.work-hero img{object-fit:cover}
+@media (max-height:735px){
+ #board-page #board-stage{
+   width:min(95vw,calc((100dvh - 185px) * 1055 / 1490))!important;
+   top:calc(50% + 50px)!important;
+ }
+ .board-media-strip{top:66px;height:89px}
+}
