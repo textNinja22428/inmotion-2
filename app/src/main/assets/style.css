@@ -175,3 +175,51 @@ body.theme-dark #cover-stage .seal-motion-video{filter:brightness(.72) contrast(
  100%{clip-path:polygon(112% 0,136% 0,136% 100%,112% 100%)}
 }
 @media(prefers-reduced-motion:reduce){.entry-transition.is-active{animation:entrySwipe .3s linear both}}
+
+/* IN MOTION v2.7 — Guardian override chamber. Preserve the main cover. */
+.lockdown-shade.open{
+ display:block;
+ overflow-y:auto;
+ overflow-x:hidden;
+ overscroll-behavior:contain;
+ padding:max(16px,env(safe-area-inset-top)) 16px max(18px,env(safe-area-inset-bottom));
+}
+.lockdown-shade .lockdown-content{
+ margin:0 auto;
+ width:min(100%,470px);
+ gap:10px;
+ padding:2px 0 18px;
+}
+.lockdown-hero{
+ position:relative;
+ width:100%;
+ height:clamp(145px,26dvh,230px);
+ border:1px solid #9b3046;
+ border-radius:10px;
+ background:#10121a;
+ overflow:hidden;
+ box-shadow:0 10px 35px #0008;
+}
+.lockdown-hero img{display:block;width:100%;height:100%;object-fit:contain;object-position:center}
+.lockdown-hero:after{content:"";position:absolute;inset:0;box-shadow:inset 0 0 24px #07070c88;pointer-events:none}
+.lockdown-content h1{font-size:clamp(28px,8vw,38px);letter-spacing:3px;margin:0}
+.lockdown-caption{font-size:10px}
+.lockdown-status{padding:8px;font-size:10px}
+.lockdown-guide{border-left:2px solid #d63c59;padding:7px 0 7px 12px;background:linear-gradient(90deg,#81223a24,transparent);color:#ddd4d4}
+.lockdown-guide h2{font:bold 13px/1.3 Arial,Helvetica,sans-serif;color:#ff899c;letter-spacing:1px;margin:0 0 9px}
+.lockdown-guide p{font:12px/1.48 Arial,Helvetica,sans-serif;margin:8px 0}
+.lockdown-guide em{font-style:italic;color:#fff}
+.lockdown-guide blockquote{
+ font:600 12px/1.47 Arial,Helvetica,sans-serif;
+ margin:8px 0 0;padding:10px 12px;
+ color:#ffe1e3;background:#431c2b;
+ border:1px solid #9a4257;border-radius:6px;
+}
+.lockdown-content label{margin-top:4px}
+#lockdown-notes{min-height:clamp(135px,23dvh,250px);max-height:55dvh}
+.lockdown-actions{display:grid;grid-template-columns:1fr;gap:9px;padding-top:2px}
+.lockdown-actions button{min-height:47px;border-radius:9px;padding:12px 14px;letter-spacing:1px;font:900 12px/1.3 Arial,sans-serif}
+.lockdown-copy{background:#252a31;color:#ffe7eb;border:1px solid #ab546b}
+.lockdown-copy:active{background:#3d2935}
+.lockdown-enter{background:#c82942;color:white;border:1px solid #fb586f}
+@media (min-width:400px) and (min-height:790px){.lockdown-actions{grid-template-columns:1fr 1fr}.lockdown-actions button{min-height:54px}}
