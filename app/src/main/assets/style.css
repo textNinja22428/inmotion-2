@@ -223,3 +223,47 @@ body.theme-dark #cover-stage .seal-motion-video{filter:brightness(.72) contrast(
 .lockdown-copy:active{background:#3d2935}
 .lockdown-enter{background:#c82942;color:white;border:1px solid #fb586f}
 @media (min-width:400px) and (min-height:790px){.lockdown-actions{grid-template-columns:1fr 1fr}.lockdown-actions button{min-height:54px}}
+
+/* IN MOTION 2.7.1 — SEAL RELOCATION
+   The original center seal in cover.png is at x≈527,y≈705 of 1054x1492.
+   The wider film's crimson emblem aligns at precisely that position.
+   Do not modify the separate Rock Lee video or Mnemonic Spark geometry. */
+#cover-stage .seal-cover-cleanup {
+  position:absolute;
+  left:44.4%; top:42.9%; width:11.5%; height:8.6%;
+  z-index:6; pointer-events:none;opacity:0;
+  background:radial-gradient(ellipse at center, #fff 0%,#fff 43%,#ffffffed 57%,#ffffff00 78%);
+}
+#cover-stage.has-seal-video .seal-cover-cleanup {opacity:1;}
+#cover-stage .seal-motion-video {
+  position:absolute;
+  inset:auto!important;
+  left:40.8%!important;
+  top:39.2%!important;
+  width:45.16%!important;
+  height:16.09%!important;
+  max-width:none!important;
+  max-height:none!important;
+  aspect-ratio:476/240;
+  transform:none!important;
+  object-fit:fill!important;
+  object-position:center;
+  mix-blend-mode:multiply;
+  z-index:7;
+  pointer-events:none;
+}
+#cover-stage .seal-trigger {
+  position:absolute;
+  left:43.9%!important;
+  top:42.5%!important;
+  width:12.5%!important;
+  height:9%!important;
+  z-index:9;
+  border:0;
+  border-radius:50%;
+  background:transparent;
+  touch-action:manipulation;
+}
+body.theme-dark #cover-stage .seal-cover-cleanup {
+  background:radial-gradient(ellipse at center,#b8b8b8 0%,#b8b8b8 43%,#b8b8b8ed 57%,#b8b8b800 78%);
+}
