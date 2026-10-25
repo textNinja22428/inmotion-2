@@ -412,7 +412,11 @@ function loadAIConnection(){
   aiAvailable=!!info.configured;
   Q('ai-endpoint').value=info.endpoint||'';
  }catch(e){aiAvailable=false;}
- Q('agent-connect-status').textContent=aiAvailable?'GPT CONNECTED · PRIVATE WORKER':'LOCAL MODE · AI NOT CONFIGURED';
+ Q('agent-connect-status').textContent=aiAvailable?'GPT SETUP SAVED · CONNECTION UNTESTED':'LOCAL MODE · AI NOT CONFIGURED';
+ const intro=Q('agent-shade').querySelector('.agent-description');
+ if(intro)intro.textContent=aiAvailable
+  ?'Ask GPT using your private connection. Your saved notes are only shared when you choose the checkbox.'
+  :'Search your daily notes, completed tasks, Gallery and Guardian history privately on this device.';
 }
 function saveAIConnection(){
  const url=Q('ai-endpoint').value.trim(),token=Q('ai-token').value.trim();
