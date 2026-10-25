@@ -50,9 +50,12 @@ public class MainActivity extends Activity {
     private boolean lockdownActive = false;
     private MediaPlayer lockdownMusic;
     private MediaPlayer workMusic;
-    private boolean workMode = false;
+    private MediaPlayer eeMusic;
+    private MediaPlayer studyMusic;
+    private String journalMode = "";
     private static final int WORK_PHOTO_PICKER_REQUEST = 7302;
     private String pendingWorkPhotoDate = "";
+    private String pendingPhotoJournal = "work";
     private SharedPreferences aiSettings;
     private static final int MAX_STORED_WORK_PHOTOS = 750;
     private static final int VOICE_REQUEST_CODE = 7201;
@@ -60,15 +63,39 @@ public class MainActivity extends Activity {
     private String pendingSpeechTarget = "editor";
 
     private void syncWorkMusic() {
-        if(workMusic==null)return;
-        boolean shouldPlay=isResumed&&workMode&&!lockdownActive&&!speechPromptActive&&!preferences.getBoolean("muted",false);
-        try{
-            if(shouldPlay&&!workMusic.isPlaying())workMusic.start();
-            else if(!shouldPlay&&workMusic.isPlaying())workMusic.pause();
-        }catch(Exception e){Log.w("IN_MOTION","Work soundtrack",e);}
+        boolean active=isResumed&&!lockdownActive&&!speechPromptActive&&!preferences.getBoolean("muted",false);
+        syncJournalTrack(workMusic,active&&"work".equals(journalMode));
+        syncJournalTrack(eeMusic,active&&"ee".equals(journalMode));
+        syncJournalTrack(studyMusic,active&&"study".equals(journalMode));
     }
-    private void changeWorkMode(boolean open){
-        workMode=open;syncPlayback();syncWorkMusic();
+    private void syncJournalTrack(MediaPlayer player,boolean play) {
+        if(player==null)return;
+        try{
+            if(play&&!player.isPlaying())player.start();
+            else if(!play&&player.isPlaying())player.pause();
+        }catch(Exception e){Log.w("IN_MOTION","Journal soundtrack state",e);}
+    }
+    private void changeJournalMode(String mode){
+        if(!("work".equals(mode)||"ee".equals(mode)||"study".equals(mode)))mode="";
+        journalMode=mode;
+        syncPlayback();syncWorkMusic();
+    }
+    private MediaPlayer loadJournalSong(String filename){
+        MediaPlayer player=null;
+        try {
+            AssetFileDescriptor afd=getAssets().openFd(filename);
+            player=new MediaPlayer();
+            player.setAudioAttributes(new AudioAttributes.Builder()
+              .setUsage(AudioAttributes.USAGE_MEDIA)
+              .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build());
+            player.setDataSource(afd.getFileDescriptor(),afd.getStartOffset(),afd.getLength());
+            afd.close();player.setLooping(true);player.prepare();
+            return player;
+        }catch(Exception e){
+            Log.w("IN_MOTION","Journal music missing: "+filename,e);
+            if(player!=null)player.release();
+            return null;
+        }
     }
 
     private void syncLockdownMusic(){
@@ -136,19 +163,9 @@ public class MainActivity extends Activity {
             if(lockdownMusic!=null){lockdownMusic.release(); lockdownMusic=null;}
         }
 
-        try {
-            AssetFileDescriptor afd = getAssets().openFd("work_screen.mp3");
-            workMusic = new MediaPlayer();
-            workMusic.setAudioAttributes(new AudioAttributes.Builder()
-                 .setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build());
-            workMusic.setDataSource(afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength());
-            afd.close();
-            workMusic.setLooping(true);
-            workMusic.prepare();
-        } catch(Exception e) {
-            Log.w("IN_MOTION","Work soundtrack asset not present yet",e);
-            if(workMusic!=null){workMusic.release();workMusic=null;}
-        }
+        workMusic=loadJournalSong("work_screen.mp3");
+        eeMusic=loadJournalSong("ee_theme.mp3");
+        studyMusic=loadJournalSong("study_theme.mp3");
 
         soundPool = new SoundPool.Builder().setMaxStreams(6)
             .setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA)
@@ -168,7 +185,7 @@ public class MainActivity extends Activity {
 
     private void syncPlayback() {
         if (music == null) return;
-        boolean shouldPlay = isResumed && !lockdownActive && !workMode && !speechPromptActive && !preferences.getBoolean("muted", false);
+        boolean shouldPlay = isResumed && !lockdownActive && journalMode.isEmpty() && !speechPromptActive && !preferences.getBoolean("muted", false);
         try {
             if (shouldPlay && !music.isPlaying()) music.start();
             else if (!shouldPlay && music.isPlaying()) music.pause();
@@ -189,7 +206,7 @@ public class MainActivity extends Activity {
             webView.evaluateJavascript("window.onWorkPhotosChanged("+JSONObject.quote(msg)+")",null);
         }
     }
-    private boolean saveWorkImage(Uri uri,String date) {
+    private boolean saveWorkImage(Uri uri,String date,String category) {
         File folder=new File(getFilesDir(),"work_photos");
         if(!folder.exists()&&!folder.mkdirs())return false;
         Bitmap bitmap=null;
@@ -219,7 +236,7 @@ public class MainActivity extends Activity {
                 if(!bitmap.compress(Bitmap.CompressFormat.JPEG,76,file))return false;
             }
             JSONObject info=new JSONObject();
-            info.put("id",id);info.put("date",date);
+            info.put("id",id);info.put("date",date);info.put("category",category);
             info.put("createdAt",System.currentTimeMillis());
             JSONArray entries=readWorkEntries();
             if(entries.length()>=MAX_STORED_WORK_PHOTOS){output.delete();return false;}
@@ -246,7 +263,10 @@ public class MainActivity extends Activity {
     public class AudioBridge {
 
         @JavascriptInterface public void setWorkMode(boolean enabled){
-            runOnUiThread(()->changeWorkMode(enabled));
+            runOnUiThread(()->changeJournalMode(enabled?"work":""));
+        }
+        @JavascriptInterface public void setJournalMode(String mode){
+            runOnUiThread(()->changeJournalMode(mode));
         }
         @JavascriptInterface public String listWorkPhotos(){
             return readWorkEntries().toString();
@@ -263,10 +283,12 @@ public class MainActivity extends Activity {
                 return "data:image/jpeg;base64,"+Base64.encodeToString(bytes,Base64.NO_WRAP);
             }catch(Exception e){Log.w("IN_MOTION","Photo read failed",e);return "";}
         }
-        @JavascriptInterface public void pickWorkPhotos(String date){
+        @JavascriptInterface public void pickWorkPhotos(String date,String category){
             if(date==null||!date.matches("\\d{4}-\\d{2}-\\d{2}"))return;
+            if(!("work".equals(category)||"ee".equals(category)||"study".equals(category)))return;
             runOnUiThread(()->{
                 pendingWorkPhotoDate=date;
+                pendingPhotoJournal=category;
                 Intent intent=new Intent(Intent.ACTION_OPEN_DOCUMENT);
                 intent.setType("image/*");
                 intent.addCategory(Intent.CATEGORY_OPENABLE);
@@ -441,13 +463,14 @@ public class MainActivity extends Activity {
         if(requestCode==WORK_PHOTO_PICKER_REQUEST){
             if(resultCode!=Activity.RESULT_OK||data==null)return;
             String date=pendingWorkPhotoDate;
+            String category=pendingPhotoJournal;
             new Thread(()->{
                 int saved=0;
                 ClipData selected=data.getClipData();
                 if(selected!=null){
                     for(int i=0;i<selected.getItemCount()&&i<20;i++)
-                        if(saveWorkImage(selected.getItemAt(i).getUri(),date))saved++;
-                }else if(data.getData()!=null&&saveWorkImage(data.getData(),date))saved++;
+                        if(saveWorkImage(selected.getItemAt(i).getUri(),date,category))saved++;
+                }else if(data.getData()!=null&&saveWorkImage(data.getData(),date,category))saved++;
                 final int count=saved;
                 runOnUiThread(()->workNotify(count>0?count+" work photo(s) saved on this device":"No photos could be saved"));
             },"inmotion-photo-save").start();
@@ -494,6 +517,8 @@ public class MainActivity extends Activity {
     @Override protected void onDestroy() {
         if(lockdownMusic!=null){lockdownMusic.release();lockdownMusic=null;}
         if(workMusic!=null){workMusic.release();workMusic=null;}
+        if(eeMusic!=null){eeMusic.release();eeMusic=null;}
+        if(studyMusic!=null){studyMusic.release();studyMusic=null;}
         if (music != null) { music.release(); music = null; }
         if (soundPool != null) { soundPool.release(); soundPool = null; }
         if (webView != null) { webView.destroy(); webView = null; }
