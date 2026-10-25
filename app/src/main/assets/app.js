@@ -129,7 +129,7 @@ function syncCoverVideo(){
  for(const video of [coverVideo,sealVideo]){
    if(!video)continue;
    video.muted=true;video.volume=0;
-   if(page==='cover'&&!document.hidden&&!state.lockdownActive){
+   if(page==='cover'&&!workOpen&&!document.hidden&&!state.lockdownActive){
      const promise=video.play();
      if(promise&&typeof promise.catch==='function')promise.catch(()=>{});
    }else{
@@ -318,6 +318,121 @@ document.addEventListener('pointerdown',()=>{
 
 
 
+
+/* V2.9 Work Journal. Dates are generated on demand (30 at a time).
+   Photos live in the private Android app directory, not localStorage. */
+let workOpen=false,workLoaded=30,workPhotos=[],workExpanded=new Set(),workPhotoCache=new Map();
+const workDate=n=>{const d=new Date();d.setHours(12,0,0,0);d.setDate(d.getDate()-n);return todayKey(d);};
+const workLabel=k=>new Intl.DateTimeFormat('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(new Date(k+'T12:00:00'));
+function workReload(){
+ try{workPhotos=JSON.parse(window.NativeAudio.listWorkPhotos());if(!Array.isArray(workPhotos))workPhotos=[];}
+ catch(e){workPhotos=[];}
+}
+function workImage(id){
+ if(workPhotoCache.has(id))return workPhotoCache.get(id);
+ try{const src=window.NativeAudio.getWorkPhotoData(id);
+  if(src&&src.startsWith('data:image/jpeg;base64,')){
+   if(workPhotoCache.size>=20)workPhotoCache.clear();
+   workPhotoCache.set(id,src);return src;
+  }
+ }catch(e){}
+ return '';
+}
+function workRender(){
+ const holder=Q('work-days');holder.textContent='';
+ const keys=Array.from({length:workLoaded},(_,n)=>workDate(n));
+ for(const image of workPhotos)if(image&&image.date&&!keys.includes(image.date))keys.push(image.date);
+ keys.sort().reverse();
+ for(const dayKey of keys){
+  const pictures=workPhotos.filter(x=>x.date===dayKey);
+  const card=document.createElement('section');card.className='work-day';
+  const button=document.createElement('button');button.className='work-day-head';button.type='button';
+  const header=document.createElement('span'),title=document.createElement('strong'),small=document.createElement('small');
+  title.textContent=workLabel(dayKey);small.textContent=pictures.length+' PHOTO'+(pictures.length===1?'':'S');
+  header.append(title,small);
+  const arrow=document.createElement('span');arrow.className='work-chevron';arrow.textContent='›';
+  button.append(header,arrow);
+  const body=document.createElement('div');body.className='work-day-body';
+  function expand(){
+   body.textContent='';
+   if(!pictures.length){const blank=document.createElement('div');blank.className='work-empty';blank.textContent='No photos for this day yet.';body.append(blank);}
+   else{
+    const grid=document.createElement('div');grid.className='work-thumbs';
+    pictures.forEach(p=>{
+     const tile=document.createElement('button');tile.className='work-thumb';tile.type='button';
+     const img=document.createElement('img');img.loading='lazy';img.alt='Work photo';
+     img.src=workImage(p.id);
+     tile.append(img);tile.onclick=()=>openWorkPhoto(p.id);grid.append(tile);
+    });body.append(grid);
+   }
+   const add=document.createElement('button');add.className='work-add-day';add.textContent='+ ADD PHOTOS TO '+dayKey;add.onclick=()=>addWorkPhotos(dayKey);body.append(add);
+  }
+  button.onclick=()=>{const show=!card.classList.contains('open');card.classList.toggle('open',show);if(show){workExpanded.add(dayKey);expand();}else workExpanded.delete(dayKey);};
+  card.append(button,body);holder.append(card);
+  if(workExpanded.has(dayKey)||(!workExpanded.size&&dayKey===todayKey())){card.classList.add('open');expand();}
+ }
+ Q('work-more').hidden=workLoaded>=3650;
+}
+function openWorkJournal(){
+ if(page!=='cover'||state.lockdownActive)return;
+ workOpen=true;Q('work-date').value=todayKey();
+ workReload();workRender();show('work-shade');syncCoverVideo();
+ if(window.NativeAudio?.setWorkMode)try{window.NativeAudio.setWorkMode(true);}catch(e){}
+}
+function closeWorkJournal(){
+ closeWorkPhoto();workOpen=false;hide('work-shade');syncCoverVideo();
+ if(window.NativeAudio?.setWorkMode)try{window.NativeAudio.setWorkMode(false);}catch(e){}
+}
+function loadMoreWorkDays(){const y=Q('work-scroll').scrollTop;workLoaded=Math.min(workLoaded+30,3650);workRender();Q('work-scroll').scrollTop=y;}
+function addWorkPhotos(date){
+ const chosen=date||Q('work-date').value||todayKey();
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(chosen)||chosen>todayKey()){toast('Choose today or a past date');return;}
+ if(!window.NativeAudio?.pickWorkPhotos){toast('Photo picker requires Android');return;}
+ try{window.NativeAudio.pickWorkPhotos(chosen);}catch(e){toast('Photo picker unavailable');}
+}
+window.onWorkPhotosChanged=message=>{workReload();workPhotoCache.clear();if(workOpen){workRender();toast(message||'Photos saved');}};
+function openWorkPhoto(id){
+ const src=workImage(id);if(!src){toast('Photo unavailable');return;}
+ Q('work-lightbox-photo').src=src;show('work-lightbox');
+}
+function closeWorkPhoto(){
+ hide('work-lightbox');Q('work-lightbox-photo').removeAttribute('src');
+}
+
+/* AI can be called only after the user configures a private HTTPS proxy.
+   Memory is not uploaded unless the checkbox is ticked. */
+let aiAvailable=false,aiPending=false;
+function loadAIConnection(){
+ try{const info=JSON.parse(window.NativeAudio.getAIConfiguration());
+  aiAvailable=!!info.configured;
+  Q('ai-endpoint').value=info.endpoint||'';
+ }catch(e){aiAvailable=false;}
+ Q('agent-connect-status').textContent=aiAvailable?'GPT CONNECTED · PRIVATE WORKER':'LOCAL MODE · AI NOT CONFIGURED';
+}
+function saveAIConnection(){
+ const url=Q('ai-endpoint').value.trim(),token=Q('ai-token').value.trim();
+ if(!/^https:\/\/[^\s/]+\/chat\/?$/.test(url)||!token){toast('HTTPS /chat URL and pairing token required');return;}
+ if(!window.NativeAudio?.saveAIConfiguration){toast('Android required for setup');return;}
+ try{if(window.NativeAudio.saveAIConfiguration(url,token)){Q('ai-token').value='';loadAIConnection();toast('AI connection saved ✓');}else toast('Could not save connection');}catch(e){toast('Setup failed');}
+}
+function clearAIConnection(){
+ try{window.NativeAudio?.clearAIConfiguration();}catch(e){}
+ Q('ai-endpoint').value='';Q('ai-token').value='';loadAIConnection();toast('AI disconnected');
+}
+function aiSelectedMemory(query){
+ const words=String(query).toLocaleLowerCase('tr-TR').match(/[\p{L}\p{N}]{3,}/gu)||[];
+ return agentDocuments().map(x=>{
+  const haystack=(x.title+' '+x.note).toLocaleLowerCase('tr-TR');
+  const score=words.reduce((n,w)=>n+(haystack.includes(w)?2:0),0)+(x.date===state.activeDay?1:0);
+  return {...x,score};
+ }).filter(x=>x.score>0).sort((a,b)=>b.score-a.score)
+ .slice(0,8).map(x=>x.date+' | '+x.title+': '+x.note.slice(0,550)).join('\n').slice(0,5000);
+}
+window.onInMotionAIResult=function(ok,text){
+ aiPending=false;const message=String(text||'').slice(0,4200);
+ agentAddMessage('assistant',ok?message:'AI connection failed: '+message+'\nLocal search remains available.');
+};
+
 /* IN MOTION 2.8 — on-device personal memory, never transmitted to an API.
    A deterministic local search / recap, NOT a remotely connected AI model. */
 const AGENT_MAX_MESSAGES=36;
@@ -428,7 +543,7 @@ function agentAddMessage(who,message,save=true){
   persist();
  }
 }
-function openInMotionAgent(){
+function openInMotionAgent(){loadAIConnection();
  if(state.lockdownActive)return;
  rollover();
  const area=Q('agent-messages');area.textContent='';
@@ -439,10 +554,15 @@ function openInMotionAgent(){
 }
 function closeInMotionAgent(){hide('agent-shade');Q('agent-input').blur();}
 function submitAgentQuery(){
- const input=Q('agent-input'),query=input.value.trim();
- if(!query)return;
- input.value='';
- agentAddMessage('user',query.slice(0,600));
+ const input=Q('agent-input'),query=input.value.trim();if(!query||aiPending)return;
+ input.value='';agentAddMessage('user',query.slice(0,600));
+ if(aiAvailable&&window.NativeAudio?.askInMotionAI){
+  aiPending=true;
+  const memory=Q('agent-include-memory').checked?aiSelectedMemory(query):'';
+  agentAddMessage('assistant','Thinking with connected GPT…');
+  try{window.NativeAudio.askInMotionAI(JSON.stringify({question:query.slice(0,1200),context:memory}));return;}
+  catch(e){aiPending=false;}
+ }
  agentAddMessage('assistant',agentResponse(query).slice(0,4400));
 }
 function askAgentPreset(which){
@@ -593,7 +713,7 @@ Q('lockdown-notes').addEventListener('input',()=>{
  state.lockdownDraft=Q('lockdown-notes').value;persist();
 });
 
-window.handleAndroidBack=()=>{if(state.lockdownActive)return true;if(Q('agent-shade').classList.contains('open')){closeInMotionAgent();return true;}if(Q('stopwatch-shade').classList.contains('open')){closeStopwatch();return true;}if(Q('modal-shade').classList.contains('open')){closeEditor();return true;}
+window.handleAndroidBack=()=>{if(state.lockdownActive)return true;if(Q('work-lightbox').classList.contains('open')){closeWorkPhoto();return true;}if(workOpen){closeWorkJournal();return true;}if(Q('agent-shade').classList.contains('open')){closeInMotionAgent();return true;}if(Q('stopwatch-shade').classList.contains('open')){closeStopwatch();return true;}if(Q('modal-shade').classList.contains('open')){closeEditor();return true;}
  if(Q('settings-shade').classList.contains('open')){closeSettings();return true;}
  if(Q('history-shade').classList.contains('open')){closeHistory();return true;}
  if(Q('gallery-shade').classList.contains('open')){closeGallery();return true;}
