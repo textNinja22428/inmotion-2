@@ -10,6 +10,10 @@ import android.media.SoundPool;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Intent;
+import android.speech.RecognizerIntent;
+import java.util.ArrayList;
+import java.util.Locale;
+import org.json.JSONObject;
 import android.net.Uri;
 import android.util.Log;
 import android.view.View;
@@ -29,10 +33,13 @@ public class MainActivity extends Activity {
     private boolean isResumed = false;
     private boolean lockdownActive = false;
     private MediaPlayer lockdownMusic;
+    private static final int VOICE_REQUEST_CODE = 7201;
+    private boolean speechPromptActive = false;
+    private String pendingSpeechTarget = "editor";
 
     private void syncLockdownMusic(){
         if(lockdownMusic==null) return;
-        boolean shouldPlay=isResumed && lockdownActive;
+        boolean shouldPlay=isResumed && lockdownActive && !speechPromptActive;
         try{
             if(shouldPlay && !lockdownMusic.isPlaying()) lockdownMusic.start();
             else if(!shouldPlay && lockdownMusic.isPlaying()) lockdownMusic.pause();
@@ -112,7 +119,7 @@ public class MainActivity extends Activity {
 
     private void syncPlayback() {
         if (music == null) return;
-        boolean shouldPlay = isResumed && !lockdownActive && !preferences.getBoolean("muted", false);
+        boolean shouldPlay = isResumed && !lockdownActive && !speechPromptActive && !preferences.getBoolean("muted", false);
         try {
             if (shouldPlay && !music.isPlaying()) music.start();
             else if (!shouldPlay && music.isPlaying()) music.pause();
@@ -144,6 +151,30 @@ public class MainActivity extends Activity {
             preferences.edit().putBoolean("muted", muted).apply();
             runOnUiThread(() -> syncPlayback());
         }
+        @JavascriptInterface public void startVoiceInput(String target) {
+            if (!("editor".equals(target) || "lockdown".equals(target) || "agent".equals(target))) return;
+            runOnUiThread(() -> {
+                if (speechPromptActive) return;
+                pendingSpeechTarget = target;
+                Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+                intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+                intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault().toLanguageTag());
+                intent.putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak to IN MOTION");
+                intent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1);
+                speechPromptActive = true;
+                syncPlayback();
+                syncLockdownMusic();
+                try {
+                    startActivityForResult(intent, VOICE_REQUEST_CODE);
+                } catch (Exception e) {
+                    speechPromptActive = false;
+                    syncPlayback();
+                    syncLockdownMusic();
+                    notifySpeechFailure("Speech recognition service is not installed.");
+                    Log.w("IN_MOTION", "Speech recognizer unavailable", e);
+                }
+            });
+        }
         @JavascriptInterface public void openYouTube() {
             runOnUiThread(() -> {
                 Uri link = Uri.parse("https://www.youtube.com");
@@ -169,6 +200,41 @@ public class MainActivity extends Activity {
                 return false;
             }
         }
+    }
+
+    private void notifySpeechFailure(String message) {
+        if (webView == null) return;
+        String script = "window.onInMotionSpeechError(" +
+                JSONObject.quote(pendingSpeechTarget) + "," +
+                JSONObject.quote(message) + ");";
+        webView.evaluateJavascript(script, null);
+    }
+
+    @Override
+    @SuppressWarnings("deprecation")
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != VOICE_REQUEST_CODE) return;
+        speechPromptActive = false;
+        syncPlayback();
+        syncLockdownMusic();
+        if (webView == null) return;
+        if (resultCode != Activity.RESULT_OK || data == null) {
+            notifySpeechFailure("Voice input cancelled.");
+            return;
+        }
+        ArrayList<String> recognized =
+                data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
+        if (recognized == null || recognized.isEmpty() || recognized.get(0).trim().isEmpty()) {
+            notifySpeechFailure("No speech recognized. Please try again.");
+            return;
+        }
+        String speech = recognized.get(0);
+        if (speech.length() > 12000) speech = speech.substring(0, 12000);
+        String script = "window.onInMotionSpeechResult(" +
+                JSONObject.quote(pendingSpeechTarget) + "," +
+                JSONObject.quote(speech) + ");";
+        webView.evaluateJavascript(script, null);
     }
 
     @Override protected void onResume() {
