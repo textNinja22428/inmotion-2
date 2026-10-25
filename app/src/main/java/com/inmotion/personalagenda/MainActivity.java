@@ -9,6 +9,8 @@ import android.media.MediaPlayer;
 import android.media.SoundPool;
 import android.content.ClipData;
 import android.content.ClipboardManager;
+import android.content.Intent;
+import android.net.Uri;
 import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
@@ -141,6 +143,22 @@ public class MainActivity extends Activity {
         @JavascriptInterface public void setMuted(boolean muted) {
             preferences.edit().putBoolean("muted", muted).apply();
             runOnUiThread(() -> syncPlayback());
+        }
+        @JavascriptInterface public void openYouTube() {
+            runOnUiThread(() -> {
+                Uri link = Uri.parse("https://www.youtube.com");
+                Intent youtube = new Intent(Intent.ACTION_VIEW, link);
+                youtube.setPackage("com.google.android.youtube");
+                try {
+                    startActivity(youtube);
+                } catch (Exception missingApp) {
+                    try {
+                        startActivity(new Intent(Intent.ACTION_VIEW, link));
+                    } catch (Exception missingBrowser) {
+                        Log.w("IN_MOTION", "No available app or browser for YouTube", missingBrowser);
+                    }
+                }
+            });
         }
         @JavascriptInterface public boolean playSelect() {
             if (soundPool == null || !selectLoaded || selectSoundId == 0) return false;
