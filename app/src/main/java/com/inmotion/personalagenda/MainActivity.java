@@ -306,7 +306,7 @@ public class MainActivity extends Activity {
                 try{
                     JSONObject in=new JSONObject(payload);
                     String question=in.optString("question","");
-                    if(question.isBlank()||question.length()>1300)throw new IllegalArgumentException("Invalid question");
+                    if(question.trim().isEmpty()||question.length()>1300)throw new IllegalArgumentException("Invalid question");
                     String context=in.optString("context","");
                     if(context.length()>5100)throw new IllegalArgumentException("Context too long");
                     JSONObject body=new JSONObject();body.put("question",question);body.put("context",context);
@@ -323,7 +323,15 @@ public class MainActivity extends Activity {
                     int status=conn.getResponseCode();
                     InputStream response=status>=200&&status<300?conn.getInputStream():conn.getErrorStream();
                     if(response==null)throw new IllegalStateException("No response");
-                    byte[] data=response.readNBytes(22000);
+                    java.io.ByteArrayOutputStream buffer=new java.io.ByteArrayOutputStream();
+                    byte[] chunk=new byte[4096];int total=0,n;
+                    try(InputStream source=response){
+                        while((n=source.read(chunk))!=-1 && total<22000){
+                            int allowed=Math.min(n,22000-total);
+                            buffer.write(chunk,0,allowed);total+=allowed;
+                        }
+                    }
+                    byte[] data=buffer.toByteArray();
                     String json=new String(data,StandardCharsets.UTF_8);
                     JSONObject parsed=new JSONObject(json);
                     if(status!=200)throw new IllegalStateException(parsed.optString("error","HTTP "+status));
