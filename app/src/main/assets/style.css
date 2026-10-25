@@ -707,3 +707,10 @@ body.theme-dark #cover-stage .seal-motion-video{
  color:var(--ink);border:1px solid var(--line);font:800 11px Arial,sans-serif}
 .settings-card{max-height:92dvh;overflow-y:auto}
 @media(max-height:710px){.work-hero{height:185px}.work-header>div strong{font-size:18px}}
+
+/* Dialog hierarchy: Work Journal < Personal Intelligence < Settings/Lockdown < Photo */
+#agent-shade{z-index:112}
+#settings-shade{z-index:128}
+#work-shade{z-index:95}
+#work-lightbox{z-index:142}
+#lockdown-shade{z-index:135}
