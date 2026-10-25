@@ -689,6 +689,17 @@ function agentDocuments(){
    items.push({date,kind:'override',title:'Guardian Override',note:String(entry.note),completed:false});
   }
  }
+ // Journals are separate private stores; only selected relevant entries are shared,
+ // and only when the user explicitly ticks SHARE RELEVANT NOTES WITH AI.
+ const titles={work:'WORK JOURNAL',ee:'E,E / PHYSICAL',study:'STUDY JOURNAL'};
+ for(const [mode,notes] of Object.entries(journalNotes||{})){
+  if(!titles[mode]||!notes||typeof notes!=='object')continue;
+  for(const [date,value] of Object.entries(notes)){
+   const note=String(value||'').trim();
+   if(!note)continue;
+   items.push({date,kind:'journal',title:titles[mode],note,completed:false});
+  }
+ }
  return items;
 }
 function agentSummaryForDate(key){
