@@ -7,10 +7,8 @@ import android.content.res.AssetFileDescriptor;
 import android.media.AudioAttributes;
 import android.media.MediaPlayer;
 import android.media.SoundPool;
-import android.media.ToneGenerator;
-import android.media.AudioManager;
-import android.os.Handler;
-import android.os.Looper;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
@@ -28,31 +26,24 @@ public class MainActivity extends Activity {
     private SharedPreferences preferences;
     private boolean isResumed = false;
     private boolean lockdownActive = false;
-    private ToneGenerator lockdownTone;
-    private final Handler alarmHandler = new Handler(Looper.getMainLooper());
-    private final Runnable alarmTick = new Runnable() {
-        @Override public void run() {
-            if(!lockdownActive || !isResumed) return;
-            try {
-                if(lockdownTone!=null)
-                    lockdownTone.startTone(ToneGenerator.TONE_CDMA_EMERGENCY_RINGBACK, 1700);
-            } catch(Exception e){ Log.w("IN_MOTION", "Lockdown alarm playback", e); }
-            alarmHandler.postDelayed(this, 6500);
-        }
-    };
+    private MediaPlayer lockdownMusic;
+
+    private void syncLockdownMusic(){
+        if(lockdownMusic==null) return;
+        boolean shouldPlay=isResumed && lockdownActive;
+        try{
+            if(shouldPlay && !lockdownMusic.isPlaying()) lockdownMusic.start();
+            else if(!shouldPlay && lockdownMusic.isPlaying()) lockdownMusic.pause();
+        }catch(Exception e){Log.w("IN_MOTION","Lockdown soundtrack state change failed",e);}
+    }
 
     private void changeLockdown(boolean enabled) {
         lockdownActive=enabled;
-        alarmHandler.removeCallbacks(alarmTick);
-        if(lockdownTone!=null)lockdownTone.stopTone();
-        if(enabled && isResumed) {
-            if(lockdownTone==null) {
-                try{lockdownTone=new ToneGenerator(AudioManager.STREAM_ALARM,85);}
-                catch(Exception e){Log.w("IN_MOTION","Alarm channel unavailable",e);}
-            }
-            alarmHandler.post(alarmTick);
-        }
         syncPlayback();
+        if(enabled && lockdownMusic!=null){
+            try{lockdownMusic.seekTo(0);}catch(Exception e){Log.w("IN_MOTION","Lockdown soundtrack rewind",e);}
+        }
+        syncLockdownMusic();
     }
 
     @Override
@@ -86,6 +77,21 @@ public class MainActivity extends Activity {
             music.prepare();
         } catch (Exception e) { Log.e("IN_MOTION", "Background music unavailable", e); }
 
+        try {
+            AssetFileDescriptor guardian = getAssets().openFd("guardians_lockdown.mp3");
+            lockdownMusic = new MediaPlayer();
+            lockdownMusic.setAudioAttributes(new AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build());
+            lockdownMusic.setDataSource(guardian.getFileDescriptor(), guardian.getStartOffset(), guardian.getLength());
+            guardian.close();
+            lockdownMusic.setLooping(true);
+            lockdownMusic.prepare();
+        } catch (Exception e) {
+            Log.w("IN_MOTION", "Guardian lockdown soundtrack is not yet in assets", e);
+            if(lockdownMusic!=null){lockdownMusic.release(); lockdownMusic=null;}
+        }
+
         soundPool = new SoundPool.Builder().setMaxStreams(6)
             .setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA)
                 .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build()).build();
@@ -116,6 +122,15 @@ public class MainActivity extends Activity {
         @JavascriptInterface public void setLockdown(boolean enabled) {
             runOnUiThread(() -> changeLockdown(enabled));
         }
+        @JavascriptInterface public boolean copyText(String text){
+            if(text==null || text.length()==0 || text.length()>200000) return false;
+            try {
+                ClipboardManager clipboard=(ClipboardManager)getSystemService(CLIPBOARD_SERVICE);
+                if(clipboard==null)return false;
+                clipboard.setPrimaryClip(ClipData.newPlainText("IN MOTION — The Disruption", text));
+                return true;
+            } catch(Exception e){Log.w("IN_MOTION","Could not copy Reassurer text",e);return false;}
+        }
         @JavascriptInterface public void saveGalleryImage(String json) {
             GalleryExporter.export(MainActivity.this,json,success -> {
                 if(webView!=null){
@@ -140,13 +155,13 @@ public class MainActivity extends Activity {
 
     @Override protected void onResume() {
         super.onResume(); isResumed = true; syncPlayback();
-        if(lockdownActive){alarmHandler.removeCallbacks(alarmTick);alarmHandler.post(alarmTick);}
+        syncLockdownMusic();
         if(webView != null) webView.onResume();
     }
     @Override protected void onPause() {
-        isResumed = false;alarmHandler.removeCallbacks(alarmTick);
-        if(lockdownTone!=null)lockdownTone.stopTone();
-        syncPlayback(); if(webView != null) webView.onPause(); super.onPause();
+        isResumed = false;
+        syncPlayback(); syncLockdownMusic();
+        if(webView != null) webView.onPause(); super.onPause();
     }
     @Override @SuppressWarnings("deprecation") public void onBackPressed() {
         if (webView == null) { super.onBackPressed(); return; }
@@ -155,8 +170,7 @@ public class MainActivity extends Activity {
         });
     }
     @Override protected void onDestroy() {
-        alarmHandler.removeCallbacks(alarmTick);
-        if(lockdownTone!=null){lockdownTone.stopTone();lockdownTone.release();lockdownTone=null;}
+        if(lockdownMusic!=null){lockdownMusic.release();lockdownMusic=null;}
         if (music != null) { music.release(); music = null; }
         if (soundPool != null) { soundPool.release(); soundPool = null; }
         if (webView != null) { webView.destroy(); webView = null; }
