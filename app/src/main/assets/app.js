@@ -306,7 +306,7 @@ function closeSettings(){hide('settings-shade');}
 Q('music-enabled').addEventListener('change',e=>setMuted(!e.target.checked));
 Q('dark-enabled').addEventListener('change',e=>{state.theme=e.target.checked?'dark':'light';persist();applyTheme();});
 Q('sound-enabled').addEventListener('change',e=>{state.soundEnabled=e.target.checked;persist();});
-for(const id of ['modal-shade','settings-shade','gallery-shade','history-shade','stopwatch-shade'])Q(id).addEventListener('pointerdown',e=>{if(e.target===Q(id)){if(id==='modal-shade')closeEditor();else if(id==='settings-shade')closeSettings();else if(id==='gallery-shade')closeGallery();else if(id==='stopwatch-shade')closeStopwatch();else closeHistory();}});
+for(const id of ['modal-shade','settings-shade','gallery-shade','history-shade','stopwatch-shade','agent-shade'])Q(id).addEventListener('pointerdown',e=>{if(e.target===Q(id)){if(id==='modal-shade')closeEditor();else if(id==='settings-shade')closeSettings();else if(id==='gallery-shade')closeGallery();else if(id==='stopwatch-shade')closeStopwatch();else if(id==='agent-shade')closeInMotionAgent();else closeHistory();}});
 // All pointer interactions: a single select sample through native SoundPool, or HTML audio in browsers.
 const clickAudio=Q('web-click');let clickedAt=0;
 document.addEventListener('pointerdown',()=>{
@@ -316,6 +316,200 @@ document.addEventListener('pointerdown',()=>{
  try{clickAudio.pause();clickAudio.currentTime=0;clickAudio.play().catch(()=>{});}catch(e){}
 },{passive:true,capture:true});
 
+
+
+/* IN MOTION 2.8 — on-device personal memory, never transmitted to an API.
+   A deterministic local search / recap, NOT a remotely connected AI model. */
+const AGENT_MAX_MESSAGES=36;
+const AGENT_STOPWORDS=new Set([
+ 've','veya','bir','bu','ben','bana','benim','ile','icin','için','ne','neler','nedir',
+ 'hakkinda','hakkında','bunu','olan','oldu','gibi','nerede','hangi','var','yok',
+ 'the','and','for','what','how','when','from','my','me','did','does','about',
+ 'please','today','yesterday','notlarım','notları','notlar','some','show'
+]);
+function agentDocuments(){
+ const items=[];
+ const keys=Object.keys(state.days||{}).sort().reverse();
+ for(const key of keys){
+  const stored=state.days[key]||{};
+  const snap=stored.snapshot||stored;
+  const sourceSlots=key===state.activeDay?stored.slots:snap.slots;
+  const sourceDone=key===state.activeDay?stored.done:snap.done;
+  const slots=Array.isArray(sourceSlots)?sourceSlots:[];
+  const done=Array.isArray(sourceDone)?sourceDone:[];
+  for(let i=0;i<8;i++){
+   const note=String(slots[i]||'').trim();
+   if(!note)continue;
+   items.push({date:key,kind:'note',title:SECTIONS[i].name,note,
+               completed:done[i]===true});
+  }
+ }
+ if(Array.isArray(state.overrideLog)){
+  for(const entry of state.overrideLog){
+   if(!entry||!entry.note)continue;
+   const date=String(entry.time||'').slice(0,10)||todayKey();
+   items.push({date,kind:'override',title:'Guardian Override',note:String(entry.note),completed:false});
+  }
+ }
+ return items;
+}
+function agentSummaryForDate(key){
+ const d=state.days&&state.days[key];
+ if(!d)return 'No saved records for '+key+'.';
+ const source=(key===state.activeDay?d:(d.snapshot||d));
+ const slots=Array.isArray(source.slots)?source.slots:[];
+ const done=Array.isArray(source.done)?source.done:[];
+ const lines=[key===todayKey()?'TODAY · '+key:key,
+   'Completed: '+done.filter(Boolean).length+'/8 · Notes: '+slots.filter(t=>String(t||'').trim()).length+'/8'];
+ for(let i=0;i<8;i++){
+  const note=String(slots[i]||'').trim();
+  if(note)lines.push((done[i]?'✓ ':'○ ')+SECTIONS[i].name+': '+note.slice(0,450));
+  else if(done[i])lines.push('✓ '+SECTIONS[i].name+' (no note)');
+ }
+ if(lines.length===2)lines.push('No notes yet. Double-tap the cover to start today’s page.');
+ return lines.join('\n');
+}
+function agentResponse(rawQuery){
+ const query=String(rawQuery||'').trim().slice(0,600);
+ if(!query)return 'Write a question or tap TODAY, HISTORY or OVERRIDES.';
+ const q=query.toLocaleLowerCase('tr-TR');
+ if(/^(hi|hey|hello|merhaba|selam|help|yardım|ne yapabilirsin)/.test(q))
+  return 'I can summarize your daily page, find past notes by keyword, show completion counts and look up Guardian overrides. I am an on-device search assistant in this version, not yet connected to ChatGPT.\n\nTry: “Bugün ne yaptım?”, “geçen hafta toplantı”, or “son Guardian notum”.';
+ if(/\b(bugün|bugun|today|şimdi)\b/u.test(q)||q==='today')
+  return agentSummaryForDate(state.activeDay);
+ if(/\b(dün|dun|yesterday)\b/u.test(q)){
+  const prior=new Date();prior.setDate(prior.getDate()-1);
+  return agentSummaryForDate(todayKey(prior));
+ }
+ if(/\b(guardian|override|disruption|lockdown|reassurer)\b/u.test(q) ||
+    /son (kriz|müdahale|müdahalem)/u.test(q)){
+  const logs=Array.isArray(state.overrideLog)?state.overrideLog:[];
+  if(!logs.length)return 'No Guardian Override entries are saved on this device yet.';
+  return 'GUARDIAN OVERRIDE LOG · '+logs.length+' entries\n\n'+logs.slice(-5).reverse()
+    .map((v,i)=>String(v.time||'').replace('T',' ').slice(0,16)+':\n'+String(v.note||'').slice(0,1100)).join('\n\n');
+ }
+ if(/\b(gallery|history|archive|geçmiş|gecmis|arşiv|arsiv|hafta|week|günler|gunler)\b/u.test(q)){
+  const keys=Object.keys(state.days||{}).sort().reverse();
+  const archive=keys.filter(k=>state.days[k]&&state.days[k].archived);
+  const completed=keys.reduce((sum,k)=>{
+   const d=state.days[k]||{};return sum+(Array.isArray(d.done)?d.done.filter(Boolean).length:0);
+  },0);
+  return 'LOCAL HISTORY\n'+keys.length+' recorded days · '+archive.length+' days in Gallery · '+completed+' current completion marks across days.\n\n'
+   +keys.slice(0,12).map(k=>{
+     const d=state.days[k]||{},v=k===state.activeDay?d:(d.snapshot||d);
+     return k+' · '+(Array.isArray(v.done)?v.done.filter(Boolean).length:0)+'/8 complete · '+(Array.isArray(v.slots)?v.slots.filter(t=>String(t||'').trim()).length:0)+' notes';
+   }).join('\n');
+ }
+ const documents=agentDocuments();
+ const words=(q.match(/[\p{L}\p{N}]{2,}/gu)||[]).filter(x=>!AGENT_STOPWORDS.has(x));
+ if(!words.length)return 'Try a more specific keyword, such as a project, task, topic or person mentioned in your notes.';
+ const candidates=documents.map(item=>{
+   const body=(item.note+' '+item.title).toLocaleLowerCase('tr-TR');
+   let score=0;
+   for(const word of words)if(body.includes(word))score+=word.length>=5?3:2;
+   if(body.includes(q))score+=10;
+   return {...item,score};
+ }).filter(item=>item.score>0).sort((a,b)=>b.score-a.score||b.date.localeCompare(a.date));
+ if(!candidates.length)
+  return 'I searched '+documents.length+' local notes/overrides and could not find "'+query+'". Try fewer or different words. Nothing was sent online.';
+ return 'FOUND '+candidates.length+' MATCH'+(candidates.length!==1?'ES':'')+' IN YOUR LOCAL RECORDS\n\n'
+  +candidates.slice(0,6).map(item=>item.date+' · '+item.title+(item.completed?' ✓':'')+'\n'+item.note.slice(0,650)).join('\n\n');
+}
+function agentAddMessage(who,message,save=true){
+ const area=Q('agent-messages');
+ const node=document.createElement('article');node.className='agent-message '+(who==='user'?'user':'assistant');
+ const label=document.createElement('small');label.textContent=who==='user'?'YOU':'IN MOTION · LOCAL';
+ const text=document.createElement('div');text.textContent=message;
+ node.append(label,text);area.append(node);area.scrollTop=area.scrollHeight;
+ if(save){
+  if(!Array.isArray(state.agentChat))state.agentChat=[];
+  state.agentChat.push({who,message:String(message).slice(0,4000)});
+  if(state.agentChat.length>AGENT_MAX_MESSAGES)state.agentChat=state.agentChat.slice(-AGENT_MAX_MESSAGES);
+  persist();
+ }
+}
+function openInMotionAgent(){
+ if(state.lockdownActive)return;
+ rollover();
+ const area=Q('agent-messages');area.textContent='';
+ const messages=Array.isArray(state.agentChat)?state.agentChat.slice(-AGENT_MAX_MESSAGES):[];
+ if(!messages.length)agentAddMessage('assistant','Your personal log is ready. Ask me about today, search an older note or review Guardian overrides. I only search records stored in this app; AI conversation will require a separate secure connection.',false);
+ else for(const item of messages)agentAddMessage(item.who==='user'?'user':'assistant',String(item.message||''),false);
+ show('agent-shade');
+}
+function closeInMotionAgent(){hide('agent-shade');Q('agent-input').blur();}
+function submitAgentQuery(){
+ const input=Q('agent-input'),query=input.value.trim();
+ if(!query)return;
+ input.value='';
+ agentAddMessage('user',query.slice(0,600));
+ agentAddMessage('assistant',agentResponse(query).slice(0,4400));
+}
+function askAgentPreset(which){
+ const choice={today:'Bugün ne yaptım?',history:'Geçmiş kayıtlarım',overrides:'Son Guardian Override kayıtlarım'};
+ Q('agent-input').value=choice[which]||'';
+ submitAgentQuery();
+}
+function clearInMotionChat(){
+ state.agentChat=[];persist();
+ Q('agent-messages').textContent='';
+ agentAddMessage('assistant','Conversation cleared. Your daily notes, Gallery and Guardian records are unchanged.',false);
+}
+Q('agent-input').addEventListener('keydown',e=>{
+ if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){
+  e.preventDefault();submitAgentQuery();
+ }
+});
+
+/* Dictation uses the Android device's installed speech recognizer.
+   It may depend on a recognition service/network; NOT ChatGPT voice. */
+let currentSpeechTarget=null,webRecognizer=null;
+function insertDictatedText(element,words){
+ const value=String(words||'').trim();if(!value||!element)return;
+ const first=typeof element.selectionStart==='number'?element.selectionStart:element.value.length;
+ const last=typeof element.selectionEnd==='number'?element.selectionEnd:first;
+ const separator=first>0&&element.value[first-1]&&!/\s/.test(element.value[first-1])?' ':'';
+ element.value=element.value.slice(0,first)+separator+value+element.value.slice(last);
+ const pos=first+separator.length+value.length;
+ try{element.setSelectionRange(pos,pos);}catch(e){}
+ element.dispatchEvent(new Event('input',{bubbles:true}));
+ element.focus();
+}
+function startInMotionSpeech(target){
+ if(!['editor','lockdown','agent'].includes(target))return;
+ if(state.lockdownActive&&target!=='lockdown')return;
+ const node=target==='editor'?Q('editor-input'):target==='lockdown'?Q('lockdown-notes'):Q('agent-input');
+ if(!node)return;
+ if(target==='editor'&&!Q('modal-shade').classList.contains('open'))return;
+ if(target==='agent'&&!Q('agent-shade').classList.contains('open'))return;
+ currentSpeechTarget=target;
+ if(window.NativeAudio&&typeof window.NativeAudio.startVoiceInput==='function'){
+  try{window.NativeAudio.startVoiceInput(target);return;}catch(e){/* use browser fallback */}
+ }
+ const SpeechApi=window.SpeechRecognition||window.webkitSpeechRecognition;
+ if(!SpeechApi){toast('Speech recognition is not available. You can still type your notes.');return;}
+ try{
+  if(webRecognizer)webRecognizer.abort();
+  const recognizer=new SpeechApi();webRecognizer=recognizer;
+  recognizer.lang=navigator.language||'tr-TR';
+  recognizer.interimResults=false;recognizer.maxAlternatives=1;
+  recognizer.onresult=e=>window.onInMotionSpeechResult(target,e.results[0][0].transcript);
+  recognizer.onerror=e=>window.onInMotionSpeechError(target,e.error||'Speech recognition failed');
+  recognizer.start();toast('Listening…');
+ }catch(e){window.onInMotionSpeechError(target,'Speech recognizer unavailable');}
+}
+window.onInMotionSpeechResult=function(target,result){
+ if(!['editor','lockdown','agent'].includes(target))return;
+ const input=target==='editor'?Q('editor-input'):target==='lockdown'?Q('lockdown-notes'):Q('agent-input');
+ if(target==='lockdown'&&!state.lockdownActive)return;
+ insertDictatedText(input,result);
+ toast('Voice note inserted ✓');
+ currentSpeechTarget=null;
+};
+window.onInMotionSpeechError=function(target,message){
+ currentSpeechTarget=null;
+ toast('Voice input: '+String(message||'not available').slice(0,75));
+};
 
 const REASSURER_PROMPT='Based on the situation described above, create a personalized Reassurer that addresses my concerns, neutralizes the internal negotiation, and helps me return to decisive action.';
 async function copyLockdownForChatGPT(){
@@ -399,7 +593,7 @@ Q('lockdown-notes').addEventListener('input',()=>{
  state.lockdownDraft=Q('lockdown-notes').value;persist();
 });
 
-window.handleAndroidBack=()=>{if(state.lockdownActive)return true;if(Q('stopwatch-shade').classList.contains('open')){closeStopwatch();return true;}if(Q('modal-shade').classList.contains('open')){closeEditor();return true;}
+window.handleAndroidBack=()=>{if(state.lockdownActive)return true;if(Q('agent-shade').classList.contains('open')){closeInMotionAgent();return true;}if(Q('stopwatch-shade').classList.contains('open')){closeStopwatch();return true;}if(Q('modal-shade').classList.contains('open')){closeEditor();return true;}
  if(Q('settings-shade').classList.contains('open')){closeSettings();return true;}
  if(Q('history-shade').classList.contains('open')){closeHistory();return true;}
  if(Q('gallery-shade').classList.contains('open')){closeGallery();return true;}
