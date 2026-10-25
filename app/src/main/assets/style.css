@@ -417,3 +417,53 @@ body.theme-dark #cover-stage .seal-motion-video{
 body.theme-dark #cover-stage .seal-motion-image {
   filter:brightness(.92) saturate(1.1);
 }
+
+/* IN MOTION 2.7.5 — ORIGINAL FULL SEAL VIDEO
+   Same fixed, proportional overlay technique as Naruto/Rock Lee.
+   Source MP4 is 476x240, shown completely and proportionally at 520x262
+   on the 1054x1492 cover. Neither crop nor mask the source.
+   White of the original film blends into the paper instead of becoming
+   a rectangular box. Entire composition is horizontally centered. */
+#cover-stage .seal-motion-video {
+    position:absolute!important;
+    inset:auto!important;
+    left:25.332068%!important;
+    top:81.300268%!important;
+    width:49.335863%!important;
+    height:17.560322%!important;
+    max-width:none!important;
+    max-height:none!important;
+    aspect-ratio:476 / 240!important;
+    transform:none!important;
+    object-fit:contain!important;
+    object-position:center center!important;
+    clip-path:none!important;
+    -webkit-clip-path:none!important;
+    mask:none!important;
+    -webkit-mask:none!important;
+    mix-blend-mode:multiply!important;
+    filter:none!important;
+    z-index:7!important;
+    pointer-events:none!important;
+    opacity:0;
+}
+#cover-stage.has-seal-video .seal-motion-video {opacity:1!important}
+#cover-stage .seal-trigger{
+    position:absolute!important;
+    left:32.9%!important;
+    top:84.35%!important;
+    width:13.5%!important;
+    height:11.7%!important;
+    padding:0!important;
+    border:0!important;
+    background:transparent!important;
+    border-radius:42%!important;
+    z-index:9!important;
+    touch-action:manipulation!important;
+}
+#cover-stage .seal-motion-image,
+#cover-stage .seal-cover-cleanup,
+#cover-stage .seal-status-restored{display:none!important}
+body.theme-dark #cover-stage .seal-motion-video{
+    filter:brightness(.72) contrast(1.04) saturate(.85)!important;
+}
