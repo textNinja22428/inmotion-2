@@ -1,0 +1,6 @@
+name = "inmotion-private-ai"
+main = "src/index.js"
+compatibility_date = "2026-10-25"
+
+[vars]
+MODEL = "gpt-5-mini"
