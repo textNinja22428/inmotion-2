@@ -390,6 +390,15 @@ public class MainActivity extends Activity {
                 }
             });
         }
+        @JavascriptInterface public void openChatGPT(){
+            runOnUiThread(() -> {
+                try {
+                    Intent app=getPackageManager().getLaunchIntentForPackage("com.openai.chatgpt");
+                    if(app!=null){startActivity(app);return;}
+                    startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse("https://chatgpt.com")));
+                }catch(Exception e){Log.w("IN_MOTION","ChatGPT shortcut unavailable",e);}
+            });
+        }
         @JavascriptInterface public void openYouTube() {
             runOnUiThread(() -> {
                 Uri link = Uri.parse("https://www.youtube.com");
