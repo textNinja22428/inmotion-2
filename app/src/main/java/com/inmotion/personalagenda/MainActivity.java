@@ -398,7 +398,10 @@ public class MainActivity extends Activity {
             aiSettings.edit().clear().apply();
         }
         @JavascriptInterface public void askInMotionAI(String payload){
-            if(payload==null||payload.length()>12000)return;
+            if(payload==null||payload.length()>12000){
+                runOnUiThread(()->deliverAI(false,"This request is too long. Shorten the notes or turn off recent conversation sharing."));
+                return;
+            }
             final String endpoint=aiSettings.getString("endpoint","");
             final String token=aiSettings.getString("pairing","");
             if(!endpoint.matches("https://[^\\s/]+/chat/?")||token.isEmpty()){
@@ -414,6 +417,12 @@ public class MainActivity extends Activity {
                     String context=in.optString("context","");
                     if(context.length()>5100)throw new IllegalArgumentException("Context too long");
                     JSONObject body=new JSONObject();body.put("question",question);body.put("context",context);
+                    // Only user-chosen identity settings and bounded, opt-in GPT
+                    // conversation history are forwarded to our private Worker.
+                    JSONObject identity=in.optJSONObject("identity");
+                    if(identity!=null)body.put("identity",identity);
+                    JSONArray history=in.optJSONArray("history");
+                    if(history!=null)body.put("history",history);
                     URL address=new URL(endpoint);
                     conn=(HttpURLConnection)address.openConnection();
                     conn.setRequestMethod("POST");conn.setInstanceFollowRedirects(false);
@@ -422,6 +431,7 @@ public class MainActivity extends Activity {
                     conn.setRequestProperty("Content-Type","application/json; charset=utf-8");
                     conn.setRequestProperty("Authorization","Bearer "+token);
                     byte[] bytes=body.toString().getBytes(StandardCharsets.UTF_8);
+                    if(bytes.length>16000)throw new IllegalArgumentException("Request too long. Please share fewer notes.");
                     conn.setFixedLengthStreamingMode(bytes.length);
                     try(OutputStream stream=conn.getOutputStream()){stream.write(bytes);}
                     int status=conn.getResponseCode();
