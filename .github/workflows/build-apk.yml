@@ -41,19 +41,14 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Generate centered, uncropped animated seal
+      - name: Prepare original seal overlay without cropping
         shell: bash
         run: |
           python -m pip install --quiet pillow numpy
-          if ! command -v ffmpeg >/dev/null 2>&1 || ! command -v ffprobe >/dev/null 2>&1; then
-            sudo apt-get update -qq
-            sudo apt-get install -y -qq ffmpeg
-          fi
           python scripts/build_seal.py
-          test -s app/src/main/assets/seal_centered.webp
-          test -s app/src/main/assets/seal_fallback.png
           test -s app/src/main/assets/cover.png
-          python -c "from PIL import Image; a=Image.open('app/src/main/assets/seal_centered.webp'); assert a.n_frames >= 60, a.n_frames; assert a.mode == 'RGBA', a.mode; print('Verified animated alpha seal:', a.n_frames, 'frames')"
+          test -s app/src/main/assets/seal_wide.mp4
+          echo "Original seal video and cleaned static poster verified."
 
 
       - name: Build APK
