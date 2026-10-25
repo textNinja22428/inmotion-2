@@ -467,3 +467,51 @@ body.theme-dark #cover-stage .seal-motion-image {
 body.theme-dark #cover-stage .seal-motion-video{
     filter:brightness(.72) contrast(1.04) saturate(.85)!important;
 }
+
+/* IN MOTION 2.7.6 — two compact shortcuts on the board; no cover changes */
+.board-topbar{
+ gap:clamp(4px,1.15vw,9px);
+ left:clamp(6px,2vw,14px);
+ right:clamp(6px,2vw,14px);
+}
+.board-topbar .board-action{
+ flex:0 0 clamp(31px,8.5vw,42px);
+ width:clamp(31px,8.5vw,42px);
+ height:clamp(34px,10vw,42px);
+ font-size:clamp(18px,5vw,25px);
+ display:grid;place-items:center;
+ padding:0;
+}
+.board-topbar .board-date{flex:1 1 auto;min-width:0;padding:5px 1px;white-space:nowrap}
+.board-topbar .board-date div{font-size:clamp(8px,2.5vw,10px)}
+.board-topbar .board-date b{font-size:clamp(8px,2.5vw,10px)}
+.board-topbar .stopwatch-action{font-size:clamp(19px,5.6vw,25px)}
+.board-topbar .youtube-action .yt-play-mark{
+ color:#fff;
+ background:#ea282c;
+ display:grid;place-items:center;
+ border-radius:5px;
+ width:23px;height:17px;
+ padding-left:2px;
+ font:900 10px/1 Arial,sans-serif;
+}
+.stopwatch-card{
+ width:min(96vw,430px);
+ max-height:90dvh;
+ display:flex;flex-direction:column;gap:23px;
+ padding:23px 19px;
+ background:var(--panel);
+ color:var(--ink);
+ border:1px solid var(--line);
+ border-radius:17px;
+ box-shadow:0 18px 70px #0004;
+}
+.stopwatch-display{
+ text-align:center;
+ font:700 clamp(29px,8.4vw,43px)/1.15 ui-monospace,SFMono-Regular,Consolas,monospace;
+ font-variant-numeric:tabular-nums;
+ letter-spacing:-1.5px;
+ white-space:nowrap;
+}
+.stopwatch-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stopwatch-actions button{min-height:50px;border-radius:9px;font-weight:900}
