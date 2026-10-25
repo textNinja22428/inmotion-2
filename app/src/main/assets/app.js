@@ -319,6 +319,11 @@ document.addEventListener('pointerdown',()=>{
 
 
 
+/* Clickable work animation must never count as cover double-tap. */
+const workTrigger=Q('work-trigger');
+if(workTrigger){
+ for(const type of ['pointerup','dblclick'])workTrigger.addEventListener(type,e=>e.stopPropagation());
+}
 /* V2.9 Work Journal. Dates are generated on demand (30 at a time).
    Photos live in the private Android app directory, not localStorage. */
 let workOpen=false,workLoaded=30,workPhotos=[],workExpanded=new Set(),workPhotoCache=new Map();
