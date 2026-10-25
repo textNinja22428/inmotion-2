@@ -32,17 +32,23 @@
   <div class="lockdown-ambient"></div>
   <div class="lockdown-content">
     <div class="lockdown-overline">IN MOTION / EMERGENCY PROTOCOL</div>
-    <div class="lockdown-symbol" aria-hidden="true">✳</div>
+    <div class="lockdown-hero"><img src="lockdown_guardian.jpg" alt="Crimson guardian overlooking the lockdown protocol" draggable="false" /></div>
     <h1>LOCKDOWN</h1>
     <p class="lockdown-caption">DISRUPTION DETECTED · OVERRIDE REQUIRED</p>
     <div class="lockdown-status">NO INTERNAL NEGOTIATION · RETURN TO ACTION</div>
-    <label for="lockdown-notes">OVERRIDE NOTEPAD</label>
-    <textarea id="lockdown-notes" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Write down the thought. Define the next concrete action."></textarea>
-    <p id="lockdown-instruction" class="lockdown-instruction">Write at least one line to override. This note will be saved on this device.</p>
-    <button id="lockdown-enter" class="lockdown-enter" type="button" onclick="completeLockdown()">ENTER / RESTORE CONTROL</button>
+    <div class="lockdown-guide">
+      <h2>IDENTIFY THE DISRUPTION</h2>
+      <p>Describe below what triggered <em>The Disruption</em>. What thoughts, doubts, or internal negotiations are interfering with your ability to take action?</p>
+      <p>Once completed, copy the entire text box and paste it into ChatGPT with the following instruction:</p>
+      <blockquote>"Based on the situation described above, create a personalized Reassurer that addresses my concerns, neutralizes the internal negotiation, and helps me return to decisive action."</blockquote>
+    </div>
+    <label for="lockdown-notes">DISRUPTION NOTEPAD</label>
+    <textarea id="lockdown-notes" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Identify the disruption. Write what is stopping you and what you need to hear."></textarea>
+    <p id="lockdown-instruction" class="lockdown-instruction">Write at least one line to override. Your notes are stored on this device.</p>
+    <div class="lockdown-actions"><button id="lockdown-copy" class="lockdown-copy" type="button" onclick="copyLockdownForChatGPT()">COPY FOR CHATGPT</button><button id="lockdown-enter" class="lockdown-enter" type="button" onclick="completeLockdown()">ENTER / RESTORE CONTROL</button></div>
   </div>
 </div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
-<audio id="web-audio" src="beneath_the_mask_instrumental.mp3" preload="none" loop></audio><audio id="web-click" src="select_sound_loud.wav" preload="auto"></audio>
+<audio id="web-audio" src="beneath_the_mask_instrumental.mp3" preload="none" loop></audio><audio id="web-click" src="select_sound_loud.wav" preload="auto"></audio><audio id="web-lockdown" src="guardians_lockdown.mp3" preload="none" loop></audio>
 <script src="app.js"></script>
 </body></html>
