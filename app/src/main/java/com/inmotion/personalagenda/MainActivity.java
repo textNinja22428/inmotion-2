@@ -54,6 +54,7 @@ public class MainActivity extends Activity {
     private MediaPlayer studyMusic;
     private String journalMode = "";
     private static final int WORK_PHOTO_PICKER_REQUEST = 7302;
+    private static final int PROGRAM_PICKER_REQUEST = 7303;
     private String pendingWorkPhotoDate = "";
     private String pendingPhotoJournal = "work";
     private SharedPreferences aiSettings;
@@ -193,6 +194,63 @@ public class MainActivity extends Activity {
     }
 
 
+
+    /* Private replaceable training-program image: image picker -> app filesDir.
+       Unlike keeping a temporary URI, copying survives app restarts and reboots. */
+    private File programImageFile() {
+        return new File(getFilesDir(),"ee_program_custom.jpg");
+    }
+    private boolean writeProgramImage(Uri uri) {
+        Bitmap bitmap=null;
+        File temp=new File(getFilesDir(),"ee_program_new.jpg");
+        try {
+            BitmapFactory.Options probe=new BitmapFactory.Options();
+            probe.inJustDecodeBounds=true;
+            try(InputStream input=getContentResolver().openInputStream(uri)){
+                BitmapFactory.decodeStream(input,null,probe);
+            }
+            if(probe.outWidth<=0||probe.outHeight<=0)return false;
+            int sample=1;
+            while(Math.max(probe.outWidth,probe.outHeight)/sample>1900)sample*=2;
+            BitmapFactory.Options options=new BitmapFactory.Options();
+            options.inSampleSize=sample;
+            try(InputStream input=getContentResolver().openInputStream(uri)){
+                bitmap=BitmapFactory.decodeStream(input,null,options);
+            }
+            if(bitmap==null)return false;
+            int largest=Math.max(bitmap.getWidth(),bitmap.getHeight());
+            if(largest>1600){
+                double scale=1600.0/largest;
+                Bitmap reduced=Bitmap.createScaledBitmap(bitmap,
+                   Math.max(1,(int)(bitmap.getWidth()*scale)),
+                   Math.max(1,(int)(bitmap.getHeight()*scale)),true);
+                bitmap.recycle();bitmap=reduced;
+            }
+            try(OutputStream stream=new FileOutputStream(temp)){
+                if(!bitmap.compress(Bitmap.CompressFormat.JPEG,82,stream))return false;
+            }
+            if(temp.length()>2200000) {
+                temp.delete();
+                return false;
+            }
+            File target=programImageFile();
+            if(target.exists()&&!target.delete())return false;
+            if(!temp.renameTo(target)){
+                try(InputStream from=new FileInputStream(temp);
+                    OutputStream to=new FileOutputStream(target)){
+                    byte[] bytes=new byte[8192];int n;
+                    while((n=from.read(bytes))>0)to.write(bytes,0,n);
+                }
+                temp.delete();
+            }
+            return target.exists()&&target.length()>0;
+        }catch(Exception e){Log.w("IN_MOTION","Failed to save custom E,E program",e);return false;}
+        finally{if(bitmap!=null&&!bitmap.isRecycled())bitmap.recycle();}
+    }
+    private void notifyProgramImage(boolean ok) {
+        if(webView!=null)webView.evaluateJavascript("window.onProgramImageChanged("+ok+")",null);
+    }
+
     /* The Android picker copies images into private filesDir. Saved photos
        are never uploaded; content is provided to the local WebView on request. */
     private JSONArray readWorkEntries(){
@@ -264,6 +322,30 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface public void setWorkMode(boolean enabled){
             runOnUiThread(()->changeJournalMode(enabled?"work":""));
+        }
+        @JavascriptInterface public void pickProgramImage(){
+            runOnUiThread(()->{
+                Intent pick=new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                pick.setType("image/*");
+                pick.addCategory(Intent.CATEGORY_OPENABLE);
+                try{startActivityForResult(pick,PROGRAM_PICKER_REQUEST);}
+                catch(Exception e){Log.w("IN_MOTION","No image picker",e);notifyProgramImage(false);}
+            });
+        }
+        @JavascriptInterface public String getProgramImageData(){
+            File file=programImageFile();
+            if(!file.isFile()||file.length()==0||file.length()>2200000)return "";
+            try(FileInputStream stream=new FileInputStream(file)){
+                byte[] content=new byte[(int)file.length()];int off=0;
+                while(off<content.length){
+                    int n=stream.read(content,off,content.length-off);
+                    if(n<0)return "";off+=n;
+                }
+                return "data:image/jpeg;base64,"+Base64.encodeToString(content,Base64.NO_WRAP);
+            }catch(Exception e){return "";}
+        }
+        @JavascriptInterface public void resetProgramImage(){
+            programImageFile().delete();
         }
         @JavascriptInterface public void setJournalMode(String mode){
             runOnUiThread(()->changeJournalMode(mode));
@@ -460,6 +542,15 @@ public class MainActivity extends Activity {
     @SuppressWarnings("deprecation")
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if(requestCode==PROGRAM_PICKER_REQUEST){
+            if(resultCode!=Activity.RESULT_OK||data==null||data.getData()==null)return;
+            final Uri source=data.getData();
+            new Thread(()->{
+                final boolean ok=writeProgramImage(source);
+                runOnUiThread(()->notifyProgramImage(ok));
+            },"inmotion-program-save").start();
+            return;
+        }
         if(requestCode==WORK_PHOTO_PICKER_REQUEST){
             if(resultCode!=Activity.RESULT_OK||data==null)return;
             String date=pendingWorkPhotoDate;
