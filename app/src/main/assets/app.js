@@ -580,6 +580,12 @@ function saveIdentitySettings(){
  try{
   localStorage.setItem(IDENTITY_STORAGE_KEY,JSON.stringify(updated));
   identitySettings=updated;toast('IN MOTION identity & memory saved ✓');
+  if(Q('agent-shade').classList.contains('open')){
+   Q('agent-footer-mode').textContent=aiAvailable
+    ? 'GPT · '+(updated.useHistory?'CHAT CONTEXT ON':'CHAT CONTEXT OFF')+
+      (updated.sendProfile?' · PROFILE ON':'')
+    : 'LOCAL SEARCH · DEVICE ONLY';
+  }
  }catch(e){toast('Could not save settings. Check device storage.');}
 }
 function resetIdentitySettings(){
@@ -787,7 +793,10 @@ function openInMotionAgent(){loadAIConnection();
   aiAvailable?'IN MOTION is online. I can help with WORK, E,E, STUDY and GUARDIAN. Set personality and memory options under PERSONALIZE. Past chats and notes are shared only with your permission.':
   'Your local records are ready. Ask me about today, history or Guardian; configure your private GPT connection to enable AI replies.',false);
  else for(const item of messages)agentAddMessage(item.who==='user'?'user':'assistant',String(item.message||''),false,item.source==='ai'?'ai':'local');
- Q('agent-footer-mode').textContent=aiAvailable?'GPT · PRIVACY CONTROLS ENABLED':'LOCAL SEARCH · DEVICE ONLY';
+ Q('agent-footer-mode').textContent=aiAvailable
+  ? 'GPT · '+(identitySettings.useHistory?'CHAT CONTEXT ON':'CHAT CONTEXT OFF')+
+    (identitySettings.sendProfile?' · PROFILE ON':'')
+  : 'LOCAL SEARCH · DEVICE ONLY';
  show('agent-shade');
 }
 function closeInMotionAgent(){hide('agent-shade');Q('agent-input').blur();}
