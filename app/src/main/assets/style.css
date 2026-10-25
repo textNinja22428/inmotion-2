@@ -286,11 +286,11 @@ body.theme-dark #cover-stage .seal-cover-cleanup {
 #cover-stage.has-seal-video .seal-cover-cleanup{opacity:1!important}
 #cover-stage .seal-motion-video{
  position:absolute!important;
+ inset:auto!important;
  left:37.8%!important;
  top:40.45%!important;
  width:45.16%!important;
  height:16.09%!important;
- inset:auto!important;
  z-index:7!important;
  pointer-events:none!important;
  object-fit:fill!important;
