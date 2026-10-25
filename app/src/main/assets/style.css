@@ -515,3 +515,41 @@ body.theme-dark #cover-stage .seal-motion-video{
 }
 .stopwatch-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .stopwatch-actions button{min-height:50px;border-radius:9px;font-weight:900}
+
+/* IN MOTION 2.7.7 — visible stopwatch readout, not a platform-dependent emoji. */
+#board-page .board-topbar #stopwatch-launch{
+ width:clamp(55px,16vw,65px)!important;
+ flex:0 0 clamp(55px,16vw,65px)!important;
+ height:47px!important;
+ display:flex!important;
+ flex-direction:column!important;
+ align-items:center!important;
+ justify-content:center!important;
+ gap:2px!important;
+ padding:3px 1px!important;
+ border:1.5px solid var(--gold)!important;
+ background:var(--glass)!important;
+ color:var(--ink)!important;
+ box-shadow:0 2px 10px #00000012;
+ line-height:1!important;
+}
+#stopwatch-launch .stopwatch-launch-icon{
+ display:block;
+ width:20px;
+ height:20px;
+ flex:0 0 20px;
+ color:var(--gold);
+ stroke:currentColor;
+}
+#stopwatch-launch .stopwatch-mini{
+ display:block;
+ color:var(--ink);
+ font:800 11px/1 ui-monospace,SFMono-Regular,Consolas,monospace;
+ font-variant-numeric:tabular-nums;
+ letter-spacing:-.5px;
+}
+#stopwatch-launch.stopwatch-running{
+ border-color:var(--gold)!important;
+ background:color-mix(in srgb,var(--gold) 14%,var(--glass))!important;
+}
+#stopwatch-launch.stopwatch-running .stopwatch-mini{color:var(--gold)}
