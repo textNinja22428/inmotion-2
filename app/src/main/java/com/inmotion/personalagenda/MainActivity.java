@@ -23,6 +23,18 @@ import org.json.JSONException;
 import java.util.UUID;
 import android.content.ClipData;
 import android.content.ContentResolver;
+import android.content.DialogInterface;
+import android.app.Dialog;
+import android.database.Cursor;
+import android.provider.OpenableColumns;
+import android.graphics.Color;
+import android.view.Gravity;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.FrameLayout;
+import android.widget.VideoView;
+import android.widget.MediaController;
+import android.widget.Toast;
 import android.media.SoundPool;
 import android.content.ClipboardManager;
 import android.content.Intent;
@@ -55,6 +67,14 @@ public class MainActivity extends Activity {
     private String journalMode = "";
     private static final int WORK_PHOTO_PICKER_REQUEST = 7302;
     private static final int PROGRAM_PICKER_REQUEST = 7303;
+    private static final int MEDIA_PICKER_REQUEST = 7304;
+    private static final long MAX_VIDEO_BYTES = 150L * 1024 * 1024;
+    private static final long MAX_MEDIA_TOTAL_BYTES = 750L * 1024 * 1024;
+    private static final int MAX_MEDIA_COUNT = 1000;
+    private volatile boolean mediaViewerActive = false;
+    private String pendingMediaCategory = "work";
+    private String pendingMediaDate = "";
+    private String pendingMediaKind = "image";
     private String pendingWorkPhotoDate = "";
     private String pendingPhotoJournal = "work";
     private SharedPreferences aiSettings;
@@ -64,7 +84,7 @@ public class MainActivity extends Activity {
     private String pendingSpeechTarget = "editor";
 
     private void syncWorkMusic() {
-        boolean active=isResumed&&!lockdownActive&&!speechPromptActive&&!preferences.getBoolean("muted",false);
+        boolean active=isResumed&&!lockdownActive&&!speechPromptActive&&!mediaViewerActive&&!preferences.getBoolean("muted",false);
         syncJournalTrack(workMusic,active&&"work".equals(journalMode));
         syncJournalTrack(eeMusic,active&&"ee".equals(journalMode));
         syncJournalTrack(studyMusic,active&&"study".equals(journalMode));
@@ -101,7 +121,7 @@ public class MainActivity extends Activity {
 
     private void syncLockdownMusic(){
         if(lockdownMusic==null) return;
-        boolean shouldPlay=isResumed && lockdownActive && !speechPromptActive;
+        boolean shouldPlay=isResumed && lockdownActive && !speechPromptActive && !mediaViewerActive;
         try{
             if(shouldPlay && !lockdownMusic.isPlaying()) lockdownMusic.start();
             else if(!shouldPlay && lockdownMusic.isPlaying()) lockdownMusic.pause();
@@ -186,7 +206,7 @@ public class MainActivity extends Activity {
 
     private void syncPlayback() {
         if (music == null) return;
-        boolean shouldPlay = isResumed && !lockdownActive && journalMode.isEmpty() && !speechPromptActive && !preferences.getBoolean("muted", false);
+        boolean shouldPlay = isResumed && !lockdownActive && journalMode.isEmpty() && !speechPromptActive && !mediaViewerActive && !preferences.getBoolean("muted", false);
         try {
             if (shouldPlay && !music.isPlaying()) music.start();
             else if (!shouldPlay && music.isPlaying()) music.pause();
@@ -312,6 +332,241 @@ public class MainActivity extends Activity {
                 return new File(new File(getFilesDir(),"work_photos"),id+".jpg");
         return null;
     }
+
+    /* Local media is private to the app. Legacy Work photos remain untouched
+       in work_photos_v1 / work_photos, and are merged into the visible list. */
+    private final Object mediaWriteLock=new Object();
+    private JSONArray readNewMedia() {
+        try {
+            JSONArray arr=new JSONArray(preferences.getString("inmotion_media_v1","[]"));
+            return arr.length()<=MAX_MEDIA_COUNT?arr:new JSONArray();
+        }catch(Exception e){return new JSONArray();}
+    }
+    private boolean validMediaCategory(String category){
+        if("work".equals(category)||"ee".equals(category)||"study".equals(category))return true;
+        return category!=null&&category.matches("slot[0-7]");
+    }
+    private JSONArray mergedMedia() {
+        JSONArray merged=new JSONArray();
+        JSONArray legacy=readWorkEntries();
+        for(int i=0;i<legacy.length();i++){
+            JSONObject obj=legacy.optJSONObject(i);
+            if(obj==null)continue;
+            try{
+                JSONObject entry=new JSONObject(obj.toString());
+                entry.put("category",entry.optString("category","work"));
+                entry.put("kind","image");
+                entry.put("legacy",true);
+                merged.put(entry);
+            }catch(Exception e){}
+        }
+        JSONArray newer=readNewMedia();
+        for(int i=0;i<newer.length();i++){
+            JSONObject entry=newer.optJSONObject(i);
+            if(entry!=null)merged.put(entry);
+        }
+        return merged;
+    }
+    private File mediaFolder() {
+        File folder=new File(getFilesDir(),"media_v1");
+        if(!folder.exists())folder.mkdirs();
+        return folder;
+    }
+    private File storedMediaFile(JSONObject entry) {
+        if(entry==null)return null;
+        String id=entry.optString("id","");
+        if(!id.matches("[a-f0-9\\-]{36}"))return null;
+        if(entry.optBoolean("legacy",false))return photoForId(id);
+        String kind=entry.optString("kind","");
+        String mime=entry.optString("mime","");
+        String ext="image".equals(kind)?".jpg":
+             "video/mp4".equals(mime)?".mp4":
+             "video/webm".equals(mime)?".webm":
+             "video/3gpp".equals(mime)?".3gp":null;
+        return ext==null?null:new File(mediaFolder(),id+ext);
+    }
+    private JSONObject findMedia(String id) {
+        if(id==null||!id.matches("[a-f0-9\\-]{36}"))return null;
+        JSONArray all=mergedMedia();
+        for(int i=0;i<all.length();i++){
+            JSONObject obj=all.optJSONObject(i);
+            if(obj!=null&&id.equals(obj.optString("id")))return obj;
+        }
+        return null;
+    }
+    private String readMediaJPEG(String id){
+        try{
+            JSONObject entry=findMedia(id);
+            if(entry==null||!"image".equals(entry.optString("kind")))return "";
+            File file=storedMediaFile(entry);
+            if(file==null||!file.isFile()||file.length()>2500000)return "";
+            byte[] bytes=new byte[(int)file.length()];
+            try(FileInputStream input=new FileInputStream(file)){
+                int position=0;
+                while(position<bytes.length){
+                    int count=input.read(bytes,position,bytes.length-position);
+                    if(count<0)return "";
+                    position+=count;
+                }
+            }
+            return "data:image/jpeg;base64,"+Base64.encodeToString(bytes,Base64.NO_WRAP);
+        }catch(Exception e){Log.w("IN_MOTION","Media image read failed",e);return "";}
+    }
+    private String originalDisplayName(Uri uri) {
+        try(Cursor c=getContentResolver().query(uri,new String[]{OpenableColumns.DISPLAY_NAME},null,null,null)){
+            if(c!=null&&c.moveToFirst())return c.getString(0);
+        }catch(Exception ignored){}
+        return "Attachment";
+    }
+    private long originalSize(Uri uri) {
+        try(Cursor c=getContentResolver().query(uri,new String[]{OpenableColumns.SIZE},null,null,null)){
+            if(c!=null&&c.moveToFirst())return c.isNull(0)?-1:c.getLong(0);
+        }catch(Exception ignored){}
+        return -1;
+    }
+    private long totalStoredMediaSize() {
+        long size=0;
+        File[] files=mediaFolder().listFiles();
+        if(files!=null)for(File file:files)if(file.isFile())size+=file.length();
+        return size;
+    }
+    private boolean saveMediaAttachment(Uri uri,String category,String date,String kind) {
+        synchronized(mediaWriteLock) {
+            if(!validMediaCategory(category)||!date.matches("\\d{4}-\\d{2}-\\d{2}"))return false;
+            if(readNewMedia().length()>=MAX_MEDIA_COUNT)return false;
+            String id=UUID.randomUUID().toString();
+            String mime=getContentResolver().getType(uri);
+            if(mime==null)mime="";
+            if("video".equals(kind)) {
+                if(!("video/mp4".equals(mime)||"video/webm".equals(mime)||"video/3gpp".equals(mime))){
+                    Log.w("IN_MOTION","Unsupported video MIME "+mime);return false;
+                }
+                long size=originalSize(uri);
+                if(size>MAX_VIDEO_BYTES||totalStoredMediaSize()+Math.max(0,size)>MAX_MEDIA_TOTAL_BYTES)return false;
+                String extension="video/mp4".equals(mime)?".mp4":"video/webm".equals(mime)?".webm":".3gp";
+                File file=new File(mediaFolder(),id+extension);
+                long copied=0;
+                try(InputStream input=getContentResolver().openInputStream(uri);
+                    OutputStream output=new FileOutputStream(file)) {
+                    if(input==null)throw new IllegalArgumentException("Media cannot be opened");
+                    byte[] bytes=new byte[65536];int n;
+                    while((n=input.read(bytes))!=-1){
+                        copied+=n;
+                        if(copied>MAX_VIDEO_BYTES||copied+totalStoredMediaSize()>MAX_MEDIA_TOTAL_BYTES)
+                            throw new IllegalStateException("Video too large");
+                        output.write(bytes,0,n);
+                    }
+                }catch(Exception e){file.delete();Log.w("IN_MOTION","Video import failed",e);return false;}
+                if(copied==0){file.delete();return false;}
+                try{
+                    JSONObject obj=new JSONObject();
+                    obj.put("id",id);obj.put("date",date);obj.put("category",category);
+                    obj.put("kind","video");obj.put("mime",mime);
+                    obj.put("name",originalDisplayName(uri).substring(0,Math.min(100,originalDisplayName(uri).length())));
+                    obj.put("bytes",copied);obj.put("createdAt",System.currentTimeMillis());
+                    JSONArray all=readNewMedia();all.put(obj);
+                    preferences.edit().putString("inmotion_media_v1",all.toString()).apply();
+                    return true;
+                }catch(Exception e){file.delete();return false;}
+            }
+            if(!"image".equals(kind)||!mime.startsWith("image/"))return false;
+            Bitmap bitmap=null;
+            File file=new File(mediaFolder(),id+".jpg");
+            try {
+                BitmapFactory.Options probe=new BitmapFactory.Options();
+                probe.inJustDecodeBounds=true;
+                try(InputStream input=getContentResolver().openInputStream(uri)){
+                    BitmapFactory.decodeStream(input,null,probe);
+                }
+                if(probe.outWidth<=0||probe.outHeight<=0)return false;
+                int sample=1;
+                while(Math.max(probe.outWidth,probe.outHeight)/sample>1700)sample*=2;
+                BitmapFactory.Options opts=new BitmapFactory.Options();opts.inSampleSize=sample;
+                try(InputStream input=getContentResolver().openInputStream(uri)){
+                    bitmap=BitmapFactory.decodeStream(input,null,opts);
+                }
+                if(bitmap==null)return false;
+                int max=Math.max(bitmap.getWidth(),bitmap.getHeight());
+                if(max>1300){
+                    double scale=1300.0/max;
+                    Bitmap reduced=Bitmap.createScaledBitmap(bitmap,
+                      Math.max(1,(int)(bitmap.getWidth()*scale)),
+                      Math.max(1,(int)(bitmap.getHeight()*scale)),true);
+                    bitmap.recycle();bitmap=reduced;
+                }
+                try(OutputStream output=new FileOutputStream(file)){
+                    if(!bitmap.compress(Bitmap.CompressFormat.JPEG,77,output))return false;
+                }
+                JSONObject obj=new JSONObject();
+                obj.put("id",id);obj.put("date",date);obj.put("category",category);
+                obj.put("kind","image");obj.put("mime","image/jpeg");
+                obj.put("name","Photo");obj.put("createdAt",System.currentTimeMillis());
+                JSONArray all=readNewMedia();all.put(obj);
+                preferences.edit().putString("inmotion_media_v1",all.toString()).apply();
+                return true;
+            }catch(Exception e){file.delete();Log.w("IN_MOTION","Image import failed",e);return false;}
+            finally{if(bitmap!=null&&!bitmap.isRecycled())bitmap.recycle();}
+        }
+    }
+    private boolean deleteMediaAttachment(String id) {
+        synchronized(mediaWriteLock){
+            JSONObject item=findMedia(id);
+            if(item==null)return false;
+            boolean old=item.optBoolean("legacy",false);
+            String key=old?"work_photos_v1":"inmotion_media_v1";
+            JSONArray original=old?readWorkEntries():readNewMedia(),next=new JSONArray();
+            for(int i=0;i<original.length();i++){
+                JSONObject obj=original.optJSONObject(i);
+                if(obj!=null&&!id.equals(obj.optString("id")))next.put(obj);
+            }
+            if(next.length()>=original.length())return false;
+            File file=storedMediaFile(item);
+            if(file!=null&&file.exists()&&!file.delete())return false;
+            preferences.edit().putString(key,next.toString()).apply();
+            return true;
+        }
+    }
+    private void notifyMediaSaved(String message) {
+        if(webView!=null)webView.evaluateJavascript(
+            "window.onInMotionMediaChanged("+JSONObject.quote(message)+")",null);
+    }
+    private void syncAllPlayback(){
+        syncPlayback();syncWorkMusic();syncLockdownMusic();
+    }
+    private void showMediaVideo(String id) {
+        JSONObject entry=findMedia(id);
+        if(entry==null||!"video".equals(entry.optString("kind")))return;
+        File file=storedMediaFile(entry);
+        if(file==null||!file.isFile()) {
+            Toast.makeText(this,"Video no longer available",Toast.LENGTH_SHORT).show();return;
+        }
+        Dialog dialog=new Dialog(this,android.R.style.Theme_Black_NoTitleBar_Fullscreen);
+        FrameLayout root=new FrameLayout(this);root.setBackgroundColor(Color.BLACK);
+        VideoView video=new VideoView(this);
+        FrameLayout.LayoutParams videoParams=new FrameLayout.LayoutParams(
+          ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT,Gravity.CENTER);
+        root.addView(video,videoParams);
+        MediaController controls=new MediaController(this);controls.setAnchorView(video);
+        video.setMediaController(controls);
+        Button close=new Button(this);close.setText("✕ CLOSE");
+        close.setTextColor(Color.WHITE);close.setBackgroundColor(0xff30343a);
+        FrameLayout.LayoutParams closeParams=new FrameLayout.LayoutParams(
+          ViewGroup.LayoutParams.WRAP_CONTENT,ViewGroup.LayoutParams.WRAP_CONTENT,
+          Gravity.TOP|Gravity.END);
+        closeParams.setMargins(12,42,14,10);root.addView(close,closeParams);
+        close.setOnClickListener(v->dialog.dismiss());
+        dialog.setContentView(root);
+        dialog.setOnDismissListener(d->{video.stopPlayback();mediaViewerActive=false;syncAllPlayback();});
+        video.setOnPreparedListener(mp->{mp.setLooping(false);video.start();controls.show(2800);});
+        video.setOnErrorListener((mp,what,extra)->{
+            Toast.makeText(this,"Video format unsupported on this phone",Toast.LENGTH_LONG).show();
+            dialog.dismiss();return true;
+        });
+        mediaViewerActive=true;syncAllPlayback();
+        dialog.show();
+        video.setVideoPath(file.getAbsolutePath());
+    }
+
     private void deliverAI(boolean ok,String text){
         if(webView!=null){
             webView.evaluateJavascript("window.onInMotionAIResult("+ok+","+JSONObject.quote(text)+")",null);
@@ -346,6 +601,32 @@ public class MainActivity extends Activity {
         }
         @JavascriptInterface public void resetProgramImage(){
             programImageFile().delete();
+        }
+
+        @JavascriptInterface public String listAllMedia(){
+            return mergedMedia().toString();
+        }
+        @JavascriptInterface public String getMediaImageData(String id){
+            return readMediaJPEG(id);
+        }
+        @JavascriptInterface public void pickInMotionMedia(String kind,String date,String category){
+            if(!("image".equals(kind)||"video".equals(kind)))return;
+            if(date==null||!date.matches("\\d{4}-\\d{2}-\\d{2}")||!validMediaCategory(category))return;
+            runOnUiThread(()->{
+                pendingMediaKind=kind;pendingMediaDate=date;pendingMediaCategory=category;
+                Intent intent=new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                intent.addCategory(Intent.CATEGORY_OPENABLE);
+                intent.setType("image".equals(kind)?"image/*":"video/*");
+                intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,"image".equals(kind));
+                try{startActivityForResult(intent,MEDIA_PICKER_REQUEST);}
+                catch(Exception e){notifyMediaSaved("Media picker unavailable");}
+            });
+        }
+        @JavascriptInterface public void playInMotionVideo(String id){
+            runOnUiThread(()->showMediaVideo(id));
+        }
+        @JavascriptInterface public boolean deleteInMotionMedia(String id){
+            return deleteMediaAttachment(id);
         }
         @JavascriptInterface public void setJournalMode(String mode){
             runOnUiThread(()->changeJournalMode(mode));
@@ -552,6 +833,27 @@ public class MainActivity extends Activity {
     @SuppressWarnings("deprecation")
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if(requestCode==MEDIA_PICKER_REQUEST){
+            if(resultCode!=Activity.RESULT_OK||data==null)return;
+            final String date=pendingMediaDate,category=pendingMediaCategory,kind=pendingMediaKind;
+            final Uri single=data.getData();
+            final ArrayList<Uri> selection=new ArrayList<>();
+            if(data.getClipData()!=null){
+                ClipData clips=data.getClipData();
+                for(int i=0;i<Math.min(12,clips.getItemCount());i++)
+                    selection.add(clips.getItemAt(i).getUri());
+            }else if(single!=null)selection.add(single);
+            new Thread(()->{
+                int saved=0;
+                for(Uri uri:selection)if(saveMediaAttachment(uri,category,date,kind))saved++;
+                final int count=saved;
+                String message=count>0
+                  ?count+" "+("video".equals(kind)?"video":"photo")+" attachment(s) saved"
+                  :"Could not save attachment (limit: 150 MB/video, 750 MB total; MP4 preferred)";
+                runOnUiThread(()->notifyMediaSaved(message));
+            },"inmotion-media-import").start();
+            return;
+        }
         if(requestCode==PROGRAM_PICKER_REQUEST){
             if(resultCode!=Activity.RESULT_OK||data==null||data.getData()==null)return;
             final Uri source=data.getData();
