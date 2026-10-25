@@ -31,7 +31,25 @@
 <label class="setting-row"><span><strong>Dark mode</strong><small>Deep charcoal · warm amber</small></span><input id="dark-enabled" class="switch-input" type="checkbox"><span class="switch-track"></span></label>
 <label class="setting-row"><span><strong>Selection sound</strong><small>Short click for every touch</small></span><input id="sound-enabled" class="switch-input" type="checkbox"><span class="switch-track"></span></label>
 <div class="ai-config"><strong>OPENAI · SECURE CONNECTION</strong><label for="ai-endpoint">Your private AI Worker URL</label><input id="ai-endpoint" type="url" placeholder="https://my-inmotion-ai.example.workers.dev/chat" autocomplete="off"><label for="ai-token">Pairing token</label><input id="ai-token" type="password" placeholder="Enter your private pairing token" autocomplete="off"><p>AI is only used after you configure a secure endpoint. Your OpenAI API key belongs on the server, never in this APK.</p><button type="button" onclick="saveAIConnection()">SAVE AI CONNECTION</button><button type="button" onclick="clearAIConnection()">DISCONNECT</button></div>
-<p class="settings-note">Your notes, Gallery and ASK IN MOTION search remain on this device. Voice dictation uses your Android speech recognition service; depending on its settings, audio may be processed online. No ChatGPT API connection is enabled in this version.</p><button class="save-btn settings-done" onclick="closeSettings()">DONE</button></section></div>
+<div class="identity-config" id="identity-config">
+  <div class="identity-heading"><span class="identity-spark">✦</span><div><strong>IN MOTION / PERSONAL INTELLIGENCE</strong><small>IDENTITY &amp; MEMORY · 3.1</small></div></div>
+  <label for="identity-tone">PERSONALITY</label>
+  <select id="identity-tone">
+    <option value="balanced">BALANCED · calm, analytical, practical</option>
+    <option value="direct">DIRECT · decisive, concise</option>
+    <option value="companion">COMPANION · warm, witty, grounded</option>
+  </select>
+  <label for="identity-directive">YOUR CORE DIRECTIVE</label>
+  <textarea id="identity-directive" rows="3" maxlength="350" placeholder="What do you want IN MOTION to help you achieve?"></textarea>
+  <label for="identity-profile">PERSONAL MEMORY · EDITABLE BY YOU</label>
+  <textarea id="identity-profile" rows="4" maxlength="1200" placeholder="Goals, routines, preferences, and non-sensitive facts you want IN MOTION to remember."></textarea>
+  <label class="identity-check"><input id="identity-send-profile" type="checkbox"><span>Share this personal profile with GPT on each question</span></label>
+  <label class="identity-check"><input id="identity-use-history" type="checkbox"><span>Include up to 8 recent saved conversation messages</span></label>
+  <p>Profile and conversations remain saved on your phone. Selected information is sent to your private GPT connection only when enabled. Daily notes have a separate opt-in toggle inside ASK IN MOTION.</p>
+  <button type="button" onclick="saveIdentitySettings()">SAVE PERSONALITY &amp; MEMORY</button>
+  <button type="button" class="identity-reset" onclick="resetIdentitySettings()">RESET IDENTITY SETTINGS</button>
+</div>
+<p class="settings-note">Your Gallery, daily journals and Guardian records remain on this device unless you specifically enable sharing relevant notes in ASK IN MOTION. Voice dictation uses your Android recognition service and may be processed online depending on your device settings. AI requests through your private Worker incur separate API charges.</p><button class="save-btn settings-done" onclick="closeSettings()">DONE</button></section></div>
 <div id="gallery-shade" class="shade" aria-hidden="true"><section class="gallery-card" role="dialog" aria-modal="true" aria-labelledby="gallery-title"><header class="editor-header"><div><div class="editor-overline">IN MOTION / MEMORY LOG</div><h1 id="gallery-title">GALLERY</h1></div><button class="icon-close" onclick="closeGallery()" aria-label="Close">×</button></header><div id="gallery-list" class="gallery-list"></div><button class="save-btn settings-done" onclick="closeGallery()">CLOSE</button></section></div>
 <div id="history-shade" class="shade" aria-hidden="true"><section class="history-card" role="dialog" aria-modal="true" aria-labelledby="history-title"><header class="editor-header"><div><div class="editor-overline">ARCHIVED / READ ONLY</div><h1 id="history-title">DAY</h1></div><button class="icon-close" onclick="closeHistory()" aria-label="Close">×</button></header><div id="history-scroll" class="history-scroll"><div id="history-board" class="history-board"><img src="board.jpg" alt="Archived agenda"><div id="history-slots"></div></div></div><div class="history-footer"><span class="history-status" id="history-status"></span><div class="history-actions"><button type="button" class="zoom-btn" onclick="changeHistoryZoom(-1)" aria-label="Zoom out">−</button><button type="button" class="zoom-btn" onclick="changeHistoryZoom(1)" aria-label="Zoom in">+</button><button type="button" class="save-image-btn" onclick="saveHistoryToPhone()">SAVE TO PHONE</button></div></div></section></div>
 <div id="lockdown-shade" class="lockdown-shade" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Disruption lockdown">
@@ -77,7 +95,7 @@
   <section class="agent-card" role="dialog" aria-modal="true" aria-labelledby="agent-title">
     <header class="editor-header"><div><div class="editor-overline">IN MOTION / PERSONAL INTELLIGENCE</div><h1 id="agent-title">ASK IN MOTION <span class="agent-title-spark">✦</span></h1></div><button class="icon-close" type="button" onclick="closeInMotionAgent()" aria-label="Close personal intelligence">×</button></header>
     <div class="agent-private"><span>● PERSONAL MEMORY</span><span id="agent-connect-status">LOCAL MODE · AI NOT CONFIGURED</span></div>
- <div class="agent-ai-tools"><label><input id="agent-include-memory" type="checkbox"> SHARE RELEVANT NOTES WITH AI</label><button type="button" onclick="openChatGPTShortcut()">CHATGPT ↗</button><button type="button" onclick="openSettings()">CONNECT AI ⚙</button></div>
+ <div class="agent-ai-tools"><label><input id="agent-include-memory" type="checkbox"> SHARE RELEVANT NOTES WITH AI</label><button type="button" onclick="openChatGPTShortcut()">CHATGPT ↗</button><button type="button" onclick="openIdentitySettings()">PERSONALIZE ⚙</button></div>
     <p class="agent-description">Search your daily notes, completed tasks, Gallery history and Guardian override log. Everything stays on this device.</p>
     <div class="agent-suggestions">
       <button type="button" onclick="askAgentPreset('today')">TODAY</button>
@@ -86,7 +104,7 @@
     </div>
     <div id="agent-messages" class="agent-messages" role="log" aria-live="polite"></div>
     <div class="agent-compose"><textarea id="agent-input" rows="2" placeholder="Ask about your notes, or search by keyword..." spellcheck="false"></textarea><button class="agent-voice-btn" type="button" onclick="startInMotionSpeech('agent')" aria-label="Speak your question">🎙</button><button class="agent-send-btn" type="button" onclick="submitAgentQuery()">ASK</button></div>
-    <div class="agent-footer"><span>LOCAL SEARCH · NO CLOUD SYNC</span><button type="button" onclick="clearInMotionChat()">CLEAR CHAT</button></div>
+    <div class="agent-footer"><span id="agent-footer-mode">LOCAL SEARCH · DEVICE ONLY</span><button type="button" onclick="clearInMotionChat()">CLEAR CHAT</button></div>
   </section>
 </div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
