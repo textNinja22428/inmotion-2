@@ -15,6 +15,7 @@ const nativeAvailable = !!window.NativeAudio;
 const covers = {cover:Q('cover-page'),board:Q('board-page')};
 let page='cover', editingSlot=-1, selectedArchive=null;
 let boardReadyAt=0;
+let entryPending=false;
 let sealTapTimes=[];
 let historyZoom=1,historyBaseWidth=0;
 
@@ -60,7 +61,6 @@ function prettyDate(key,options){
 function updateDate(){
  const d=new Date(); Q('date-weekday').textContent=new Intl.DateTimeFormat('tr-TR',{weekday:'long'}).format(d).toLocaleUpperCase('tr-TR');
  Q('date-long').textContent=new Intl.DateTimeFormat('tr-TR',{day:'numeric',month:'long',year:'numeric'}).format(d);
- Q('date-clock').textContent=new Intl.DateTimeFormat('tr-TR',{hour:'2-digit',minute:'2-digit'}).format(d);
  const hour=d.getHours();
  const greetings=[
   [6,"You need to be sleeping, my man. Have a great night, though."],
@@ -99,25 +99,42 @@ function toggleDone(index){
  if(d.done[index])toast('Marked complete ✓');
 }
 function enterBoard(){
- rollover();if(page!=='cover')return;
- page='board';boardReadyAt=Date.now()+720;
+ rollover();
+ if(page!=='cover'||entryPending||state.lockdownActive)return;
+ entryPending=true;boardReadyAt=Date.now()+850;
+ const wipe=Q('entry-transition');
+ wipe.classList.remove('is-active');
+ void wipe.offsetWidth;
+ wipe.classList.add('is-active');
  covers.board.classList.add('board-input-guard');
- covers.board.classList.remove('is-hidden');covers.cover.classList.add('is-hidden');
- syncCoverVideo();
- setTimeout(()=>{if(page==='board')covers.board.classList.remove('board-input-guard');},740);
+ setTimeout(()=>{
+   if(page!=='cover'||state.lockdownActive)return;
+   page='board';
+   covers.board.classList.remove('is-hidden');
+   covers.cover.classList.add('is-hidden');
+   syncCoverVideo();
+ },300);
+ setTimeout(()=>{
+   wipe.classList.remove('is-active');
+   entryPending=false;
+   covers.board.classList.remove('board-input-guard');
+ },850);
 }
 function goCover(){page='cover';covers.cover.classList.remove('is-hidden');covers.board.classList.add('is-hidden');covers.board.classList.remove('board-input-guard');updateXP();syncCoverVideo();}
 
 /* Portrait, silent cover animation. The original artwork remains visible as a fallback. */
 const coverVideo=Q('cover-video');
+const sealVideo=Q('seal-video');
 function syncCoverVideo(){
- if(!coverVideo)return;
- coverVideo.muted=true; coverVideo.volume=0;
- if(page==='cover'&&!document.hidden&&!state.lockdownActive){
-   const promise=coverVideo.play();
-   if(promise&&typeof promise.catch==='function')promise.catch(()=>{});
- }else{
-   coverVideo.pause();
+ for(const video of [coverVideo,sealVideo]){
+   if(!video)continue;
+   video.muted=true;video.volume=0;
+   if(page==='cover'&&!document.hidden&&!state.lockdownActive){
+     const promise=video.play();
+     if(promise&&typeof promise.catch==='function')promise.catch(()=>{});
+   }else{
+     video.pause();
+   }
  }
 }
 if(coverVideo){
@@ -128,6 +145,12 @@ if(coverVideo){
  coverVideo.addEventListener('loadeddata',()=>{if(page==='cover')syncCoverVideo();});
 }
 
+if(sealVideo){
+ sealVideo.muted=true;
+ sealVideo.addEventListener('playing',()=>Q('cover-stage').classList.add('has-seal-video'));
+ sealVideo.addEventListener('error',()=>Q('cover-stage').classList.remove('has-seal-video'));
+ sealVideo.addEventListener('loadeddata',()=>{if(page==='cover')syncCoverVideo();});
+}
 let lastTap=0,lastX=0,lastY=0;
 Q('cover-stage').addEventListener('pointerup',e=>{
  if(page!=='cover'||(e.pointerType==='mouse'&&e.button!==0))return;
