@@ -267,3 +267,72 @@ body.theme-dark #cover-stage .seal-motion-video{filter:brightness(.72) contrast(
 body.theme-dark #cover-stage .seal-cover-cleanup {
   background:radial-gradient(ellipse at center,#b8b8b8 0%,#b8b8b8 43%,#b8b8b8ed 57%,#b8b8b800 78%);
 }
+
+/* IN MOTION 2.7.2 — ACTUAL EMBLEM REPLACEMENT.
+   Previous versions stretched the *whole* seal video, including huge
+   decorative grey spikes. Isolate only the moving crimson emblem.
+   Cover coordinates originate from fixed 1054x1492 cover.png. */
+#cover-stage .seal-cover-cleanup{
+ position:absolute!important;
+ left:43.55%!important;
+ top:42.29%!important;
+ width:12.9%!important;
+ height:10.05%!important;
+ z-index:6!important;
+ pointer-events:none!important;
+ opacity:0!important;
+ background:radial-gradient(ellipse at center,#fff 0%,#fff 59%,#ffffffee 70%,#ffffff00 100%)!important;
+}
+#cover-stage.has-seal-video .seal-cover-cleanup{opacity:1!important}
+#cover-stage .seal-motion-video{
+ position:absolute!important;
+ left:37.8%!important;
+ top:40.45%!important;
+ width:45.16%!important;
+ height:16.09%!important;
+ inset:auto!important;
+ z-index:7!important;
+ pointer-events:none!important;
+ object-fit:fill!important;
+ transform:none!important;
+ /* The source emblem is centered at 27% x / 44% y in the 476x240 film. */
+ -webkit-clip-path:ellipse(13% 28% at 27% 44%);
+ clip-path:ellipse(13% 28% at 27% 44%);
+ -webkit-mask-image:radial-gradient(ellipse 14% 30% at 27% 44%,#000 38%,#000e 51%,transparent 90%);
+ mask-image:radial-gradient(ellipse 14% 30% at 27% 44%,#000 38%,#000e 51%,transparent 90%);
+ mix-blend-mode:multiply!important;
+ filter:brightness(1.6) contrast(1.35) saturate(2)!important;
+}
+#cover-stage.has-seal-video .seal-motion-video{opacity:1!important}
+#cover-stage .seal-status-restored{
+ position:absolute;
+ left:59.2%;
+ top:44.1%;
+ z-index:8;
+ width:34%;
+ display:flex;
+ flex-direction:column;
+ gap:5px;
+ color:#a32134;
+ pointer-events:none;
+ font:700 clamp(8px,1.95vw,10.5px)/1.15 Arial,Helvetica,sans-serif;
+ letter-spacing:.75px;
+ text-shadow:0 1px #fff6;
+}
+#cover-stage .seal-status-restored span{display:block;white-space:nowrap}
+#cover-stage .seal-trigger{
+ position:absolute!important;
+ left:43.5%!important;
+ top:42.25%!important;
+ width:13.5%!important;
+ height:10%!important;
+ z-index:9!important;
+ border:0!important;
+ background:transparent!important;
+ border-radius:50%!important;
+ touch-action:manipulation!important;
+}
+body.theme-dark #cover-stage .seal-cover-cleanup{
+ background:radial-gradient(ellipse at center,#b8b8b8 0%,#b8b8b8 59%,#b8b8b8ee 70%,#b8b8b800 100%)!important;
+}
+body.theme-dark #cover-stage .seal-status-restored{color:#ef7a83;text-shadow:none}
