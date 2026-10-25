@@ -891,3 +891,12 @@ body.theme-dark .board-media-tile{background:#242424;border-color:#aa925d}
 @media(max-width:360px){.work-toolbar{grid-template-columns:1fr 1fr}
  .work-toolbar label{grid-column:span 2}
  .work-toolbar button{width:100%}}
+
+/* Archived day attachments stay readable below the board (gallery remains read-only). */
+.history-media-area{display:flex;flex-direction:column;gap:12px;
+ padding:16px 12px;margin:12px 0;background:var(--bg);
+ border:1px solid var(--line);border-radius:11px}
+.history-media-area>strong{font:900 11px Arial,sans-serif;color:var(--ink);letter-spacing:.6px}
+.history-media-section{display:flex;flex-direction:column;gap:8px}
+.history-media-section>strong{font:800 10px Arial,sans-serif;color:var(--muted)}
+.history-media-section .media-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
