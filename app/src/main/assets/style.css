@@ -380,3 +380,40 @@ body.theme-dark #cover-stage .seal-status-restored{color:#ef7a83;text-shadow:non
 body.theme-dark #cover-stage .seal-motion-video{
  filter:brightness(.72) contrast(1.04) saturate(.85)!important;
 }
+
+/* IN MOTION 2.7.4 — centered, uncropped alpha seal.
+   Entire composition (emblem + status text) is one 374×204 transparent
+   animation, centered on original emblem at x=527px of the 1054px cover.
+   No rectangular video edge and no CSS clipping. */
+#cover-stage .seal-motion-image {
+  position:absolute;
+  display:block;
+  left:32.258065%!important;
+  top:82.908847%!important;
+  width:35.483871%!important;
+  height:13.672922%!important;
+  object-fit:fill!important;
+  z-index:7!important;
+  pointer-events:none!important;
+  border:0!important;
+  mix-blend-mode:normal!important;
+  transform:none!important;
+  clip-path:none!important;
+  mask-image:none!important;
+}
+#cover-stage .seal-trigger {
+  position:absolute!important;
+  left:34.724858%!important;
+  top:83.646112%!important;
+  width:12.333966%!important;
+  height:12.131367%!important;
+  z-index:9!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:43%!important;
+  background:transparent!important;
+  touch-action:manipulation!important;
+}
+body.theme-dark #cover-stage .seal-motion-image {
+  filter:brightness(.92) saturate(1.1);
+}
