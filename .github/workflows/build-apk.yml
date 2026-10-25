@@ -41,7 +41,7 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Generate physically aligned animated bottom seal
+      - name: Generate centered, uncropped animated seal
         shell: bash
         run: |
           python -m pip install --quiet pillow numpy
@@ -49,11 +49,12 @@ jobs:
             sudo apt-get update -qq
             sudo apt-get install -y -qq ffmpeg
           fi
-          ffmpeg -version | head -n 1
           python scripts/build_seal.py
-          test -s app/src/main/assets/seal_bottom.mp4
+          test -s app/src/main/assets/seal_centered.webp
+          test -s app/src/main/assets/seal_fallback.png
           test -s app/src/main/assets/cover.png
-          ffprobe -v error -show_entries format=duration,size -of default=nw=1 app/src/main/assets/seal_bottom.mp4
+          python -c "from PIL import Image; a=Image.open('app/src/main/assets/seal_centered.webp'); assert a.n_frames >= 60, a.n_frames; assert a.mode == 'RGBA', a.mode; print('Verified animated alpha seal:', a.n_frames, 'frames')"
+
 
       - name: Build APK
         run: gradle --no-daemon assembleDebug
