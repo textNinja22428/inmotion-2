@@ -61,7 +61,7 @@ public class MainActivity extends Activity {
 
     private void syncWorkMusic() {
         if(workMusic==null)return;
-        boolean shouldPlay=isResumed&&workMode&&!lockdownActive&&!speechPromptActive;
+        boolean shouldPlay=isResumed&&workMode&&!lockdownActive&&!speechPromptActive&&!preferences.getBoolean("muted",false);
         try{
             if(shouldPlay&&!workMusic.isPlaying())workMusic.start();
             else if(!shouldPlay&&workMusic.isPlaying())workMusic.pause();
@@ -366,7 +366,7 @@ public class MainActivity extends Activity {
         }
         @JavascriptInterface public void setMuted(boolean muted) {
             preferences.edit().putBoolean("muted", muted).apply();
-            runOnUiThread(() -> syncPlayback());
+            runOnUiThread(() -> {syncPlayback();syncWorkMusic();});
         }
         @JavascriptInterface public void startVoiceInput(String target) {
             if (!("editor".equals(target) || "lockdown".equals(target) || "agent".equals(target))) return;
