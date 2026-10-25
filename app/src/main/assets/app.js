@@ -424,6 +424,12 @@ function saveAIConnection(){
  if(!window.NativeAudio?.saveAIConfiguration){toast('Android required for setup');return;}
  try{if(window.NativeAudio.saveAIConfiguration(url,token)){Q('ai-token').value='';loadAIConnection();toast('AI connection saved ✓');}else toast('Could not save connection');}catch(e){toast('Setup failed');}
 }
+function openChatGPTShortcut(){
+ if(window.NativeAudio&&typeof window.NativeAudio.openChatGPT==='function'){
+  try{window.NativeAudio.openChatGPT();return;}catch(e){}
+ }
+ window.open('https://chatgpt.com','_blank');
+}
 function clearAIConnection(){
  try{window.NativeAudio?.clearAIConfiguration();}catch(e){}
  Q('ai-endpoint').value='';Q('ai-token').value='';loadAIConnection();toast('AI disconnected');
