@@ -806,3 +806,48 @@ body.theme-dark .board-media-tile{background:#242424;border-color:#aa925d}
  font:900 11px Arial,sans-serif;letter-spacing:.5px}
 .program-actions button:first-child{background:#dbb673;color:#1b1a18;border:0}
 .program-actions button:last-child{background:#252b2e;color:#dbc18c;border:1px solid #88734a}
+
+/* IN MOTION 3.1 — Identity & Memory settings (all options stored on-device). */
+.identity-config{
+ display:flex;flex-direction:column;gap:9px;padding:13px;margin-top:12px;
+ border:1px solid var(--line);border-radius:11px;
+ background:var(--bg);color:var(--ink);
+}
+.identity-heading{display:flex;align-items:center;gap:9px;margin-bottom:3px}
+.identity-heading .identity-spark{
+ display:grid;place-items:center;border-radius:9px;width:35px;height:35px;
+ background:#cfaa5422;color:var(--gold);font-size:21px;
+}
+.identity-heading div{display:flex;flex-direction:column;gap:3px;flex:1}
+.identity-heading strong{font:900 11px/1.2 Arial,sans-serif;letter-spacing:.45px}
+.identity-heading small{font:700 9px Arial,sans-serif;color:var(--muted);letter-spacing:1.3px}
+.identity-config>label{font:800 10px/1.35 Arial,sans-serif;color:var(--muted);letter-spacing:.5px}
+.identity-config select,.identity-config textarea{
+ display:block;width:100%;border:1px solid var(--line);
+ background:var(--panel);color:var(--ink);border-radius:8px;
+ min-height:44px;padding:10px;font:13px/1.4 Arial,Helvetica,sans-serif;
+ box-sizing:border-box;resize:vertical;
+}
+.identity-config textarea{min-height:68px;max-height:155px}
+.identity-config .identity-check{
+ display:flex;gap:9px;align-items:flex-start;padding:6px 0;min-height:34px;
+ letter-spacing:0;text-transform:none;color:var(--ink);
+ font:12px/1.5 Arial,sans-serif;
+}
+.identity-check input{
+ flex:0 0 17px;margin:1px 0 0;min-width:17px;min-height:17px;
+ accent-color:#c89c4b;
+}
+.identity-config p{
+ font:11px/1.5 Arial,sans-serif;color:var(--muted);margin:0 0 2px;
+}
+.identity-config>button{
+ border-radius:8px;border:1px solid var(--gold);
+ background:var(--ink);color:var(--bg);
+ padding:11px;font:900 11px/1.3 Arial,sans-serif;letter-spacing:.3px;
+ min-height:43px;
+}
+.identity-config>button.identity-reset{
+ background:transparent;color:var(--muted);border:1px solid var(--line);
+ min-height:35px;font:800 10px/1 Arial,sans-serif;
+}
