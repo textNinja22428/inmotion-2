@@ -162,6 +162,7 @@ Q('cover-stage').addEventListener('dblclick',e=>{if(page==='cover'){enterBoard()
 function openEditor(index){if(page!=='board'||Date.now()<boardReadyAt)return;rollover();editingSlot=index;const d=day();
  Q('editor-title').textContent=SECTIONS[index].name;Q('editor-overline').textContent=`${state.activeDay} / SLOT ${index+1}`;
  Q('editor-input').value=d.slots[index]||'';Q('slot-complete').checked=!!d.done[index];
+ mediaReload();renderSlotMedia();
  show('modal-shade');
 }
 function saveEditor(){if(editingSlot<0)return;const d=day(),i=editingSlot;
@@ -324,6 +325,111 @@ const workTrigger=Q('work-trigger');
 if(workTrigger){
  for(const type of ['pointerup','dblclick'])workTrigger.addEventListener(type,e=>e.stopPropagation());
 }
+
+/* IN MOTION 3.2 — unified local attachments.
+   Android stores the images/videos in app-private files; only bounded metadata
+   is held in JS. Neither the photos nor video bytes are sent to GPT. */
+let allMediaEntries=[],removalPendingId='';
+function mediaReload(){
+ try{
+  const native=window.NativeAudio;
+  if(native&&typeof native.listAllMedia==='function'){
+   const found=JSON.parse(native.listAllMedia());
+   allMediaEntries=Array.isArray(found)?found:[];
+  }else{
+   const found=JSON.parse(native.listWorkPhotos());
+   allMediaEntries=Array.isArray(found)?found.map(x=>({...x,kind:'image',legacy:true})):[];
+  }
+ }catch(e){allMediaEntries=[];}
+ return allMediaEntries;
+}
+function mediaItems(category,date){
+ return allMediaEntries.filter(x=>x&&x.category===category&&x.date===date);
+}
+function mediaData(id){
+ try{
+  const native=window.NativeAudio;
+  if(native&&typeof native.getMediaImageData==='function')
+   return native.getMediaImageData(id);
+  return native.getWorkPhotoData(id);
+ }catch(e){return '';}
+}
+function addSlotMedia(kind){
+ if(editingSlot<0||page!=='board')return;
+ pickMedia(kind,state.activeDay,'slot'+editingSlot);
+}
+function addJournalMedia(kind,date){
+ if(!workOpen)return;
+ const key=date||Q('work-date').value||todayKey();
+ pickMedia(kind,key,journalMode);
+}
+function pickMedia(kind,date,category){
+ if(kind!=='image'&&kind!=='video')return;
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){toast('Choose a valid date');return;}
+ if(!window.NativeAudio||typeof window.NativeAudio.pickInMotionMedia!=='function'){
+  toast('Media attachments require Android.');return;
+ }
+ try{window.NativeAudio.pickInMotionMedia(kind,date,category);}
+ catch(e){toast('Could not open the media picker');}
+}
+function makeMediaCard(item){
+ const tile=document.createElement('div');tile.className='media-tile';
+ const button=document.createElement('button');button.type='button';button.className='media-open';
+ const isVideo=item.kind==='video';const name=String(item.name||'').slice(0,90);
+ button.setAttribute('aria-label',isVideo?'Play video '+name:'View photo '+name);
+ if(isVideo){
+  const symbol=document.createElement('span');symbol.className='media-play-icon';symbol.textContent='▶';
+  const tag=document.createElement('small');tag.textContent=name||'SAVED VIDEO';
+  button.append(symbol,tag);button.onclick=()=>playSavedMedia(item.id);
+ }else{
+  const img=document.createElement('img');img.loading='lazy';img.alt=name||'Saved photo';
+  img.src=workImage(item.id);
+  button.append(img);button.onclick=()=>openWorkPhoto(item.id);
+ }
+ const del=document.createElement('button');del.type='button';del.className='media-delete';
+ del.setAttribute('aria-label','Remove saved attachment');
+ del.textContent='×';del.addEventListener('click',()=>{
+  if(removalPendingId!==item.id){
+   removalPendingId=item.id;del.textContent='DELETE?';return;
+  }
+  removalPendingId='';
+  try{
+   if(window.NativeAudio?.deleteInMotionMedia?.(item.id)){
+    mediaReload();workPhotoCache.clear();
+    if(workOpen)workRender();
+    if(editingSlot>=0)renderSlotMedia();
+    toast('Attachment removed');
+   }else toast('Could not remove this attachment');
+  }catch(e){toast('Could not remove attachment')}
+ });
+ tile.append(button,del);
+ return tile;
+}
+function playSavedMedia(id){
+ if(!window.NativeAudio||typeof window.NativeAudio.playInMotionVideo!=='function'){
+  toast('Video playback requires Android.');return;
+ }
+ try{window.NativeAudio.playInMotionVideo(id);}catch(e){toast('Could not open video player');}
+}
+function renderSlotMedia(){
+ const target=Q('slot-media-grid');
+ if(!target||editingSlot<0)return;
+ target.textContent='';
+ const attachments=mediaItems('slot'+editingSlot,state.activeDay);
+ Q('slot-media-count').textContent=attachments.length+' SAVED';
+ if(!attachments.length){
+  const empty=document.createElement('small');empty.className='media-empty';
+  empty.textContent='No attachments for this slot yet.';target.append(empty);return;
+ }
+ attachments.forEach(item=>target.append(makeMediaCard(item)));
+}
+window.onInMotionMediaChanged=function(message){
+ mediaReload();workPhotoCache.clear();
+ if(editingSlot>=0)renderSlotMedia();
+ if(workOpen)workRender();
+ toast(String(message||'Media saved').slice(0,100));
+};
+
 /* IN MOTION 3.0 — Future-facing Work, E,E and Study journals.
    Private photos are keyed by journal and date in Android, notes in localStorage.
    Past entries remain stored but do not fill the upcoming date timeline. */
@@ -345,18 +451,14 @@ let journalNotes={};
 try{journalNotes=JSON.parse(localStorage.getItem(JOURNAL_NOTES_KEY)||'{}')||{};}catch(e){journalNotes={};}
 const workDate=n=>{const d=new Date();d.setHours(12,0,0,0);d.setDate(d.getDate()+n);return todayKey(d);};
 const workLabel=k=>new Intl.DateTimeFormat('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(new Date(k+'T12:00:00'));
-function workReload(){
- try{workPhotos=JSON.parse(window.NativeAudio.listWorkPhotos());if(!Array.isArray(workPhotos))workPhotos=[];}
- catch(e){workPhotos=[];}
-}
+function workReload(){workPhotos=mediaReload();}
 function workImage(id){
  if(workPhotoCache.has(id))return workPhotoCache.get(id);
- try{const src=window.NativeAudio.getWorkPhotoData(id);
-  if(src&&src.startsWith('data:image/jpeg;base64,')){
-   if(workPhotoCache.size>=20)workPhotoCache.clear();
-   workPhotoCache.set(id,src);return src;
-  }
- }catch(e){}
+ const src=mediaData(id);
+ if(src&&src.startsWith('data:image/jpeg;base64,')){
+  if(workPhotoCache.size>=20)workPhotoCache.clear();
+  workPhotoCache.set(id,src);return src;
+ }
  return '';
 }
 function journalStoredNote(key){
@@ -373,10 +475,10 @@ function workRender(){
  const relevant=workPhotos.filter(x=>(x.category||'work')===journalMode);
  const keys=Array.from({length:workLoaded},(_,n)=>workDate(n));
  // Allow every future date with saved photos/notes, without creating infinite empty rows.
- for(const item of relevant)if(item.date>=todayKey()&&!keys.includes(item.date))keys.push(item.date);
+ for(const item of relevant)if(item.date&&!keys.includes(item.date))keys.push(item.date);
  for(const key of Object.keys(journalNotes[journalMode]||{}))
-  if(key>=todayKey()&&!keys.includes(key))keys.push(key);
- keys.sort();
+  if(!keys.includes(key))keys.push(key);
+ keys.sort((a,b)=>a<todayKey()&&b>=todayKey()?1:b<todayKey()&&a>=todayKey()?-1:a.localeCompare(b));
  for(const dayKey of keys){
   const pics=relevant.filter(x=>x.date===dayKey);
   const note=journalStoredNote(dayKey);
@@ -384,7 +486,7 @@ function workRender(){
   const button=document.createElement('button');button.className='work-day-head';button.type='button';
   const header=document.createElement('span'),title=document.createElement('strong'),small=document.createElement('small');
   title.textContent=workLabel(dayKey);
-  small.textContent=pics.length+' PHOTOS · '+(note.trim()?'NOTE SAVED':'NO NOTE');
+  small.textContent=pics.length+' MEDIA · '+(note.trim()?'NOTE SAVED':'NO NOTE');
   header.append(title,small);
   const arrow=document.createElement('span');arrow.className='work-chevron';arrow.textContent='›';
   button.append(header,arrow);
@@ -396,24 +498,23 @@ function workRender(){
    const area=document.createElement('textarea');area.value=journalStoredNote(dayKey);
    area.placeholder='What did you do, learn, or prepare for? Optional.';
    const save=document.createElement('button');save.type='button';save.textContent='SAVE NOTE';
-   save.onclick=()=>{journalSaveNote(dayKey,area.value);small.textContent=pics.length+' PHOTOS · '+(area.value.trim()?'NOTE SAVED':'NO NOTE');};
+   save.onclick=()=>{journalSaveNote(dayKey,area.value);small.textContent=pics.length+' MEDIA · '+(area.value.trim()?'NOTE SAVED':'NO NOTE');};
    const hint=document.createElement('small');hint.textContent='Notes are private to this device.';
    noteWrap.append(label,area,save,hint);body.append(noteWrap);
    if(pics.length){
-    const grid=document.createElement('div');grid.className='work-thumbs';
-    pics.forEach(p=>{
-     const tile=document.createElement('button');tile.className='work-thumb';tile.type='button';
-     const image=document.createElement('img');image.loading='lazy';image.alt='Saved '+journalMode+' photo';
-     image.src=workImage(p.id);tile.append(image);
-     tile.onclick=()=>openWorkPhoto(p.id);grid.append(tile);
-    });body.append(grid);
+    const grid=document.createElement('div');grid.className='media-grid journal-media-grid';
+    pics.forEach(item=>grid.append(makeMediaCard(item)));
+    body.append(grid);
    }else{
     const blank=document.createElement('div');blank.className='work-empty';
-    blank.textContent='No photos for this date yet.';body.append(blank);
+    blank.textContent='No photos or videos for this date yet.';body.append(blank);
    }
-   const add=document.createElement('button');add.className='work-add-day';
-   add.textContent='+ ADD PHOTOS TO '+dayKey;
-   add.onclick=()=>addWorkPhotos(dayKey);body.append(add);
+   const actions=document.createElement('div');actions.className='media-actions journal-media-actions';
+   const photo=document.createElement('button');photo.type='button';photo.textContent='+ ADD PHOTO';
+   photo.onclick=()=>addJournalMedia('image',dayKey);
+   const video=document.createElement('button');video.type='button';video.textContent='+ ADD VIDEO';
+   video.onclick=()=>addJournalMedia('video',dayKey);
+   actions.append(photo,video);body.append(actions);
   }
   button.onclick=()=>{
    const expanded=!card.classList.contains('open');
@@ -467,14 +568,7 @@ function loadMoreWorkDays(){
  const scroller=Q('work-scroll'),scroll=scroller.scrollTop;
  workLoaded=Math.min(workLoaded+21,730);workRender();scroller.scrollTop=scroll;
 }
-function addWorkPhotos(date){
- const chosen=date||Q('work-date').value||todayKey();
- if(!/^\d{4}-\d{2}-\d{2}$/.test(chosen)||chosen<todayKey()){
-  toast('Select today or a future date');return;
- }
- if(!window.NativeAudio?.pickWorkPhotos){toast('Android photo picker unavailable');return;}
- try{window.NativeAudio.pickWorkPhotos(chosen,journalMode);}catch(e){toast('Photo picker unavailable');}
-}
+function addWorkPhotos(date){addJournalMedia('image',date);}
 window.onWorkPhotosChanged=message=>{
  workReload();workPhotoCache.clear();if(workOpen){workRender();toast(message||'Photos saved');}
 };
