@@ -6,8 +6,24 @@ import android.content.SharedPreferences;
 import android.content.res.AssetFileDescriptor;
 import android.media.AudioAttributes;
 import android.media.MediaPlayer;
-import android.media.SoundPool;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.util.Base64;
+import android.provider.MediaStore;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.URL;
+import java.net.HttpURLConnection;
+import java.nio.charset.StandardCharsets;
+import org.json.JSONArray;
+import org.json.JSONException;
+import java.util.UUID;
 import android.content.ClipData;
+import android.content.ContentResolver;
+import android.media.SoundPool;
 import android.content.ClipboardManager;
 import android.content.Intent;
 import android.speech.RecognizerIntent;
@@ -33,9 +49,27 @@ public class MainActivity extends Activity {
     private boolean isResumed = false;
     private boolean lockdownActive = false;
     private MediaPlayer lockdownMusic;
+    private MediaPlayer workMusic;
+    private boolean workMode = false;
+    private static final int WORK_PHOTO_PICKER_REQUEST = 7302;
+    private String pendingWorkPhotoDate = "";
+    private SharedPreferences aiSettings;
+    private static final int MAX_STORED_WORK_PHOTOS = 750;
     private static final int VOICE_REQUEST_CODE = 7201;
     private boolean speechPromptActive = false;
     private String pendingSpeechTarget = "editor";
+
+    private void syncWorkMusic() {
+        if(workMusic==null)return;
+        boolean shouldPlay=isResumed&&workMode&&!lockdownActive&&!speechPromptActive;
+        try{
+            if(shouldPlay&&!workMusic.isPlaying())workMusic.start();
+            else if(!shouldPlay&&workMusic.isPlaying())workMusic.pause();
+        }catch(Exception e){Log.w("IN_MOTION","Work soundtrack",e);}
+    }
+    private void changeWorkMode(boolean open){
+        workMode=open;syncPlayback();syncWorkMusic();
+    }
 
     private void syncLockdownMusic(){
         if(lockdownMusic==null) return;
@@ -48,7 +82,7 @@ public class MainActivity extends Activity {
 
     private void changeLockdown(boolean enabled) {
         lockdownActive=enabled;
-        syncPlayback();
+        syncPlayback();syncWorkMusic();
         if(enabled && lockdownMusic!=null){
             try{lockdownMusic.seekTo(0);}catch(Exception e){Log.w("IN_MOTION","Lockdown soundtrack rewind",e);}
         }
@@ -63,6 +97,7 @@ public class MainActivity extends Activity {
         getWindow().getDecorView().setSystemUiVisibility(
             View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
         preferences = getSharedPreferences("in_motion_settings", MODE_PRIVATE);
+        aiSettings = getSharedPreferences("in_motion_private_ai", MODE_PRIVATE);
         webView = new WebView(this);
         webView.setBackgroundColor(0xffffffff);
         webView.getSettings().setJavaScriptEnabled(true);
@@ -101,6 +136,20 @@ public class MainActivity extends Activity {
             if(lockdownMusic!=null){lockdownMusic.release(); lockdownMusic=null;}
         }
 
+        try {
+            AssetFileDescriptor afd = getAssets().openFd("work_screen.mp3");
+            workMusic = new MediaPlayer();
+            workMusic.setAudioAttributes(new AudioAttributes.Builder()
+                 .setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build());
+            workMusic.setDataSource(afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength());
+            afd.close();
+            workMusic.setLooping(true);
+            workMusic.prepare();
+        } catch(Exception e) {
+            Log.w("IN_MOTION","Work soundtrack asset not present yet",e);
+            if(workMusic!=null){workMusic.release();workMusic=null;}
+        }
+
         soundPool = new SoundPool.Builder().setMaxStreams(6)
             .setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA)
                 .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build()).build();
@@ -119,14 +168,174 @@ public class MainActivity extends Activity {
 
     private void syncPlayback() {
         if (music == null) return;
-        boolean shouldPlay = isResumed && !lockdownActive && !speechPromptActive && !preferences.getBoolean("muted", false);
+        boolean shouldPlay = isResumed && !lockdownActive && !workMode && !speechPromptActive && !preferences.getBoolean("muted", false);
         try {
             if (shouldPlay && !music.isPlaying()) music.start();
             else if (!shouldPlay && music.isPlaying()) music.pause();
         } catch (Exception e) { Log.w("IN_MOTION", "Audio playback change", e); }
     }
 
+
+    /* The Android picker copies images into private filesDir. Saved photos
+       are never uploaded; content is provided to the local WebView on request. */
+    private JSONArray readWorkEntries(){
+        try{
+            JSONArray arr=new JSONArray(preferences.getString("work_photos_v1","[]"));
+            return arr.length()>MAX_STORED_WORK_PHOTOS?new JSONArray():arr;
+        }catch(Exception e){return new JSONArray();}
+    }
+    private void workNotify(String msg){
+        if(webView!=null){
+            webView.evaluateJavascript("window.onWorkPhotosChanged("+JSONObject.quote(msg)+")",null);
+        }
+    }
+    private boolean saveWorkImage(Uri uri,String date) {
+        File folder=new File(getFilesDir(),"work_photos");
+        if(!folder.exists()&&!folder.mkdirs())return false;
+        Bitmap bitmap=null;
+        try {
+            BitmapFactory.Options probe=new BitmapFactory.Options();
+            probe.inJustDecodeBounds=true;
+            try(InputStream input=getContentResolver().openInputStream(uri)){
+                BitmapFactory.decodeStream(input,null,probe);
+            }
+            if(probe.outWidth<1||probe.outHeight<1)return false;
+            int sample=1;while(Math.max(probe.outWidth,probe.outHeight)/sample>1700)sample*=2;
+            BitmapFactory.Options opts=new BitmapFactory.Options();
+            opts.inSampleSize=sample;
+            try(InputStream stream=getContentResolver().openInputStream(uri)){
+                bitmap=BitmapFactory.decodeStream(stream,null,opts);
+            }
+            if(bitmap==null)return false;
+            int max=Math.max(bitmap.getWidth(),bitmap.getHeight());
+            if(max>1250) {
+                double ratio=1250.0/max;
+                Bitmap reduced=Bitmap.createScaledBitmap(bitmap,(int)(bitmap.getWidth()*ratio),(int)(bitmap.getHeight()*ratio),true);
+                bitmap.recycle();bitmap=reduced;
+            }
+            String id=UUID.randomUUID().toString();
+            File output=new File(folder,id+".jpg");
+            try(OutputStream file=new FileOutputStream(output)){
+                if(!bitmap.compress(Bitmap.CompressFormat.JPEG,76,file))return false;
+            }
+            JSONObject info=new JSONObject();
+            info.put("id",id);info.put("date",date);
+            info.put("createdAt",System.currentTimeMillis());
+            JSONArray entries=readWorkEntries();
+            if(entries.length()>=MAX_STORED_WORK_PHOTOS){output.delete();return false;}
+            entries.put(info);
+            preferences.edit().putString("work_photos_v1",entries.toString()).apply();
+            return true;
+        }catch(Exception e){Log.w("IN_MOTION","Work photo save failed",e);return false;}
+        finally{if(bitmap!=null&&!bitmap.isRecycled())bitmap.recycle();}
+    }
+    private File photoForId(String id){
+        if(id==null||!id.matches("[a-fA-F0-9-]{36}"))return null;
+        JSONArray stored=readWorkEntries();
+        for(int n=0;n<stored.length();n++)
+            if(id.equals(stored.optJSONObject(n)==null?null:stored.optJSONObject(n).optString("id")))
+                return new File(new File(getFilesDir(),"work_photos"),id+".jpg");
+        return null;
+    }
+    private void deliverAI(boolean ok,String text){
+        if(webView!=null){
+            webView.evaluateJavascript("window.onInMotionAIResult("+ok+","+JSONObject.quote(text)+")",null);
+        }
+    }
+
     public class AudioBridge {
+
+        @JavascriptInterface public void setWorkMode(boolean enabled){
+            runOnUiThread(()->changeWorkMode(enabled));
+        }
+        @JavascriptInterface public String listWorkPhotos(){
+            return readWorkEntries().toString();
+        }
+        @JavascriptInterface public String getWorkPhotoData(String id){
+            try{
+                File file=photoForId(id);
+                if(file==null||!file.isFile()||file.length()>1300000)return "";
+                byte[] bytes=new byte[(int)file.length()];
+                try(FileInputStream fis=new FileInputStream(file)){
+                    int off=0;
+                    while(off<bytes.length){int n=fis.read(bytes,off,bytes.length-off);if(n<0)return "";off+=n;}
+                }
+                return "data:image/jpeg;base64,"+Base64.encodeToString(bytes,Base64.NO_WRAP);
+            }catch(Exception e){Log.w("IN_MOTION","Photo read failed",e);return "";}
+        }
+        @JavascriptInterface public void pickWorkPhotos(String date){
+            if(date==null||!date.matches("\\d{4}-\\d{2}-\\d{2}"))return;
+            runOnUiThread(()->{
+                pendingWorkPhotoDate=date;
+                Intent intent=new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                intent.setType("image/*");
+                intent.addCategory(Intent.CATEGORY_OPENABLE);
+                intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true);
+                try{startActivityForResult(intent,WORK_PHOTO_PICKER_REQUEST);}
+                catch(Exception e){workNotify("No photo picker available");}
+            });
+        }
+        @JavascriptInterface public String getAIConfiguration(){
+            JSONObject object=new JSONObject();
+            try{
+                String url=aiSettings.getString("endpoint","");
+                object.put("endpoint",url);
+                object.put("configured",url.startsWith("https://")&&!aiSettings.getString("pairing","").isEmpty());
+            }catch(Exception e){}
+            return object.toString();
+        }
+        @JavascriptInterface public boolean saveAIConfiguration(String endpoint,String token){
+            if(endpoint==null||token==null)return false;
+            if(!endpoint.matches("https://[^\\s/]+/chat/?")||token.length()<12||token.length()>250)return false;
+            aiSettings.edit().putString("endpoint",endpoint).putString("pairing",token).apply();
+            return true;
+        }
+        @JavascriptInterface public void clearAIConfiguration(){
+            aiSettings.edit().clear().apply();
+        }
+        @JavascriptInterface public void askInMotionAI(String payload){
+            if(payload==null||payload.length()>12000)return;
+            final String endpoint=aiSettings.getString("endpoint","");
+            final String token=aiSettings.getString("pairing","");
+            if(!endpoint.matches("https://[^\\s/]+/chat/?")||token.isEmpty()){
+                runOnUiThread(()->deliverAI(false,"Configure the HTTPS AI Worker in Settings."));
+                return;
+            }
+            new Thread(()->{
+                HttpURLConnection conn=null;
+                try{
+                    JSONObject in=new JSONObject(payload);
+                    String question=in.optString("question","");
+                    if(question.isBlank()||question.length()>1300)throw new IllegalArgumentException("Invalid question");
+                    String context=in.optString("context","");
+                    if(context.length()>5100)throw new IllegalArgumentException("Context too long");
+                    JSONObject body=new JSONObject();body.put("question",question);body.put("context",context);
+                    URL address=new URL(endpoint);
+                    conn=(HttpURLConnection)address.openConnection();
+                    conn.setRequestMethod("POST");conn.setInstanceFollowRedirects(false);
+                    conn.setConnectTimeout(12000);conn.setReadTimeout(45000);
+                    conn.setDoOutput(true);
+                    conn.setRequestProperty("Content-Type","application/json; charset=utf-8");
+                    conn.setRequestProperty("Authorization","Bearer "+token);
+                    byte[] bytes=body.toString().getBytes(StandardCharsets.UTF_8);
+                    conn.setFixedLengthStreamingMode(bytes.length);
+                    try(OutputStream stream=conn.getOutputStream()){stream.write(bytes);}
+                    int status=conn.getResponseCode();
+                    InputStream response=status>=200&&status<300?conn.getInputStream():conn.getErrorStream();
+                    if(response==null)throw new IllegalStateException("No response");
+                    byte[] data=response.readNBytes(22000);
+                    String json=new String(data,StandardCharsets.UTF_8);
+                    JSONObject parsed=new JSONObject(json);
+                    if(status!=200)throw new IllegalStateException(parsed.optString("error","HTTP "+status));
+                    String answer=parsed.optString("answer","");
+                    if(answer.isEmpty())throw new IllegalStateException("No answer from server");
+                    runOnUiThread(()->deliverAI(true,answer));
+                }catch(Exception e){
+                    String msg=String.valueOf(e.getMessage());
+                    runOnUiThread(()->deliverAI(false,msg));
+                }finally{if(conn!=null)conn.disconnect();}
+            },"inmotion-private-ai").start();
+        }
         @JavascriptInterface public boolean isMuted() { return preferences.getBoolean("muted", false); }
         @JavascriptInterface public void setLockdown(boolean enabled) {
             runOnUiThread(() -> changeLockdown(enabled));
@@ -162,14 +371,12 @@ public class MainActivity extends Activity {
                 intent.putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak to IN MOTION");
                 intent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1);
                 speechPromptActive = true;
-                syncPlayback();
-                syncLockdownMusic();
+                syncPlayback();syncLockdownMusic();syncWorkMusic();
                 try {
                     startActivityForResult(intent, VOICE_REQUEST_CODE);
                 } catch (Exception e) {
                     speechPromptActive = false;
-                    syncPlayback();
-                    syncLockdownMusic();
+                    syncPlayback();syncLockdownMusic();syncWorkMusic();
                     notifySpeechFailure("Speech recognition service is not installed.");
                     Log.w("IN_MOTION", "Speech recognizer unavailable", e);
                 }
@@ -214,10 +421,24 @@ public class MainActivity extends Activity {
     @SuppressWarnings("deprecation")
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if(requestCode==WORK_PHOTO_PICKER_REQUEST){
+            if(resultCode!=Activity.RESULT_OK||data==null)return;
+            String date=pendingWorkPhotoDate;
+            new Thread(()->{
+                int saved=0;
+                ClipData selected=data.getClipData();
+                if(selected!=null){
+                    for(int i=0;i<selected.getItemCount()&&i<20;i++)
+                        if(saveWorkImage(selected.getItemAt(i).getUri(),date))saved++;
+                }else if(data.getData()!=null&&saveWorkImage(data.getData(),date))saved++;
+                final int count=saved;
+                runOnUiThread(()->workNotify(count>0?count+" work photo(s) saved on this device":"No photos could be saved"));
+            },"inmotion-photo-save").start();
+            return;
+        }
         if (requestCode != VOICE_REQUEST_CODE) return;
         speechPromptActive = false;
-        syncPlayback();
-        syncLockdownMusic();
+        syncPlayback();syncLockdownMusic();syncWorkMusic();
         if (webView == null) return;
         if (resultCode != Activity.RESULT_OK || data == null) {
             notifySpeechFailure("Voice input cancelled.");
@@ -239,12 +460,12 @@ public class MainActivity extends Activity {
 
     @Override protected void onResume() {
         super.onResume(); isResumed = true; syncPlayback();
-        syncLockdownMusic();
+        syncLockdownMusic();syncWorkMusic();
         if(webView != null) webView.onResume();
     }
     @Override protected void onPause() {
         isResumed = false;
-        syncPlayback(); syncLockdownMusic();
+        syncPlayback();syncLockdownMusic();syncWorkMusic();
         if(webView != null) webView.onPause(); super.onPause();
     }
     @Override @SuppressWarnings("deprecation") public void onBackPressed() {
@@ -255,6 +476,7 @@ public class MainActivity extends Activity {
     }
     @Override protected void onDestroy() {
         if(lockdownMusic!=null){lockdownMusic.release();lockdownMusic=null;}
+        if(workMusic!=null){workMusic.release();workMusic=null;}
         if (music != null) { music.release(); music = null; }
         if (soundPool != null) { soundPool.release(); soundPool = null; }
         if (webView != null) { webView.destroy(); webView = null; }
