@@ -785,6 +785,8 @@ function openJournal(mode){
  syncCoverVideo();
 }
 function closeWorkJournal(){
+ if(Q('project-detail-shade').classList.contains('open'))closeProjectDetail();
+ closeProjectCategory();
  closeProgram();closeWorkPhoto();workOpen=false;hide('work-shade');
  if(window.NativeAudio?.setJournalMode){
   try{window.NativeAudio.setJournalMode('');}catch(e){}
@@ -1208,7 +1210,7 @@ function startInMotionSpeech(target){
  }catch(e){window.onInMotionSpeechError(target,'Speech recognizer unavailable');}
 }
 window.onInMotionSpeechResult=function(target,result){
- if(!['editor','lockdown','agent'].includes(target))return;
+ if(!['editor','lockdown','agent','dynamic'].includes(target))return;
  const input=target==='dynamic'?Q(dynamicSpeechInputId):target==='editor'?Q('editor-input'):target==='lockdown'?Q('lockdown-notes'):Q('agent-input');
  if(target==='lockdown'&&!state.lockdownActive)return;
  insertDictatedText(input,result);
