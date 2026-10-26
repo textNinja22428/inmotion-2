@@ -395,9 +395,12 @@ function pickMedia(kind,date,category){
 function makeMediaCard(item,readonly=false){
  const tile=document.createElement('div');tile.className='media-tile';
  const button=document.createElement('button');button.type='button';button.className='media-open';
- const isVideo=item.kind==='video';const name=String(item.name||'').slice(0,90);
+ const isVideo=item.kind==='video',isFile=item.kind==='file';const name=String(item.name||'').slice(0,90);
  button.setAttribute('aria-label',isVideo?'Play video '+name:'View photo '+name);
- if(isVideo){
+ if(isFile){const symbol=document.createElement('span');symbol.className='media-play-icon';symbol.textContent='▤';
+  const tag=document.createElement('small');tag.textContent=name||'FILE';
+  button.append(symbol,tag);button.onclick=()=>{try{window.NativeAudio.openInMotionFile(item.id);}catch(e){toast('File viewer unavailable');}};
+ }else if(isVideo){
   const symbol=document.createElement('span');symbol.className='media-play-icon';symbol.textContent='▶';
   const tag=document.createElement('small');tag.textContent=name||'SAVED VIDEO';
   button.append(symbol,tag);button.onclick=()=>playSavedMedia(item.id);
@@ -447,8 +450,208 @@ window.onInMotionMediaChanged=function(message){
  mediaReload();workPhotoCache.clear();
  if(editingSlot>=0)renderSlotMedia();
  if(workOpen)workRender();
+ if(openProjectId)projectDetailMedia();
+ if(openProgramDayId>=0)renderProgramDayImages();
  toast(String(message||'Media saved').slice(0,100));
 };
+
+
+/* IN MOTION 3.3 — projects, linked journal entries and 6 editable programs.
+   Metadata and notes remain in the private WebView store; media bytes stay
+   in Android app-private storage and are not sent to GPT. */
+const PROJECT_STORAGE='inmotion_projects_v33',TAG_STORAGE='inmotion_project_tags_v33',
+      PROGRAM_STORAGE='inmotion_six_programs_v33';
+const projectGroups={active:'ACTIVE PROJECTS',archived:'ARCHIVED PROJECTS',potential:'POTENTIAL LIST'};
+const programDays=['MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY'];
+const projectDefaultDate='2000-01-01';
+function readSavedObject(key,fallback){
+ try{const item=JSON.parse(localStorage.getItem(key)||'null');return item&&typeof item==='object'?item:fallback;}catch(e){return fallback;}
+}
+let projects=readSavedObject(PROJECT_STORAGE,{});
+let projectTags=readSavedObject(TAG_STORAGE,{});
+let sixPrograms=readSavedObject(PROGRAM_STORAGE,{});
+let projectGroup='active',openProjectId=null,openProgramDayId=-1,dynamicSpeechInputId='';
+function saveAppObject(key,value){
+ try{localStorage.setItem(key,JSON.stringify(value));return true;}
+ catch(e){toast('Storage full — could not save');return false;}
+}
+function freshProjectId(){return 'project-'+[8,4,4,4,12].map(n=>Array.from({length:n},()=>Math.floor(Math.random()*16).toString(16)).join('')).join('-');}
+function openProjectCategory(category){
+ if(!projectGroups[category]||!workOpen||journalMode!=='work')return;
+ projectGroup=category;
+ Q('project-category-title').textContent=projectGroups[category];
+ Q('project-category-description').textContent={
+  active:'Projects currently in motion.',
+  archived:'Completed or paused projects you chose to archive.',
+  potential:'Ideas and opportunities that may become active projects.'
+ }[category];
+ projectCategoryRender();show('project-category-shade');
+}
+function projectCategoryRender(){
+ const list=Q('project-category-list');list.textContent='';
+ const matching=Object.values(projects).filter(p=>p&&p.status===projectGroup).sort((a,b)=>a.name.localeCompare(b.name));
+ if(!matching.length){
+  const empty=document.createElement('p');empty.className='project-empty';
+  empty.textContent='No projects here yet. Tap + NEW PROJECT.';list.append(empty);
+ }
+ matching.forEach(project=>{
+  const btn=document.createElement('button');btn.type='button';btn.className='project-list-button';
+  const name=document.createElement('strong');name.textContent=project.name||'Untitled project';
+  const meta=document.createElement('small');meta.textContent=(project.tasks||[]).length+' TASKS · '+(project.note?.trim()?'NOTES SAVED':'NEW');
+  btn.append(name,meta);btn.onclick=()=>openProjectDetail(project.id);list.append(btn);
+ });
+}
+function closeProjectCategory(){hide('project-category-shade');}
+function createProject(){
+ const id=freshProjectId();
+ projects[id]={id,name:'New Project',status:projectGroup,note:'',tasks:[],createdAt:Date.now()};
+ if(!saveAppObject(PROJECT_STORAGE,projects))return;
+ projectCategoryRender();openProjectDetail(id);
+}
+function openProjectDetail(id){
+ const p=projects[id];if(!p)return;
+ openProjectId=id;
+ Q('project-name').value=p.name||'';
+ Q('project-description').value=p.note||'';
+ Q('project-detail-title').textContent=p.name||'PROJECT';
+ Q('project-status-button').textContent='MOVE CATEGORY · '+projectGroups[p.status];
+ projectDetailMedia();renderProjectTasks();show('project-detail-shade');
+}
+function saveProject(){
+ const p=projects[openProjectId];if(!p)return;
+ p.name=Q('project-name').value.trim().slice(0,120)||'Untitled Project';
+ p.note=Q('project-description').value.slice(0,12000);p.updatedAt=Date.now();
+ saveAppObject(PROJECT_STORAGE,projects);
+ Q('project-detail-title').textContent=p.name;
+ if(Q('project-category-shade').classList.contains('open'))projectCategoryRender();
+ if(workOpen&&journalMode==='work')workRender();
+ toast('Project saved ✓');
+}
+function closeProjectDetail(){
+ if(openProjectId&&Q('project-detail-shade').classList.contains('open'))saveProject();
+ openProjectId=null;hide('project-detail-shade');
+}
+function cycleProjectStatus(){
+ const p=projects[openProjectId];if(!p)return;
+ saveProject();
+ const order=['active','archived','potential'];
+ p.status=order[(order.indexOf(p.status)+1)%3];
+ saveAppObject(PROJECT_STORAGE,projects);
+ Q('project-status-button').textContent='MOVE CATEGORY · '+projectGroups[p.status];
+ if(Q('project-category-shade').classList.contains('open'))projectCategoryRender();
+ toast('Moved to '+projectGroups[p.status]);
+}
+function projectDetailMedia(){
+ mediaReload();const holder=Q('project-media-grid');holder.textContent='';
+ if(!openProjectId)return;
+ const matches=mediaItems(openProjectId,projectDefaultDate);
+ if(!matches.length){const empty=document.createElement('small');empty.className='media-empty';empty.textContent='No files, images or videos attached.';holder.append(empty);}
+ matches.forEach(item=>holder.append(makeMediaCard(item)));
+}
+function addProjectAttachment(kind){
+ if(!openProjectId)return;saveProject();
+ pickMedia(kind,projectDefaultDate,openProjectId);
+}
+function fmtTaskDuration(ms){
+ const sec=Math.floor(Math.max(0,ms)/1000);
+ return [Math.floor(sec/3600),Math.floor(sec%3600/60),sec%60].map(n=>String(n).padStart(2,'0')).join(':');
+}
+function durationForTask(t){
+ return (Number(t.elapsedMs)||0)+(t.running&&t.startedAt?Math.max(0,Date.now()-t.startedAt):0);
+}
+function renderProjectTasks(){
+ const host=Q('project-task-list');host.textContent='';
+ const p=projects[openProjectId];if(!p)return;
+ (p.tasks||[]).forEach(t=>{
+  const row=document.createElement('div');row.className='project-task-row';
+  const box=document.createElement('input');box.type='checkbox';box.checked=!!t.done;
+  box.onchange=()=>{t.done=box.checked;saveAppObject(PROJECT_STORAGE,projects);renderProjectTasks();};
+  const name=document.createElement('span');name.textContent=t.label;name.className=t.done?'task-done':'';
+  const time=document.createElement('span');time.className='task-time';time.textContent=fmtTaskDuration(durationForTask(t));
+  time.dataset.taskId=t.id;
+  const toggle=document.createElement('button');toggle.type='button';
+  toggle.textContent=t.running?'⏸ STOP':'▶ START';
+  toggle.onclick=()=>{
+   const current=Date.now();
+   if(t.running){t.elapsedMs=durationForTask(t);t.startedAt=0;t.running=false;}
+   else{t.running=true;t.startedAt=current;}
+   saveAppObject(PROJECT_STORAGE,projects);renderProjectTasks();
+  };
+  const remove=document.createElement('button');remove.type='button';remove.className='task-delete';remove.textContent='×';
+  remove.onclick=()=>{if(t.running){t.elapsedMs=durationForTask(t);t.running=false;}p.tasks=p.tasks.filter(x=>x.id!==t.id);saveAppObject(PROJECT_STORAGE,projects);renderProjectTasks();};
+  row.append(box,name,time,toggle,remove);host.append(row);
+ });
+}
+function addProjectTask(){
+ const p=projects[openProjectId],input=Q('project-new-task');
+ if(!p||!input.value.trim())return;
+ saveProject();p.tasks=p.tasks||[];
+ p.tasks.push({id:String(Date.now())+'-'+Math.random().toString(36).slice(2,8),label:input.value.trim().slice(0,160),elapsedMs:0,startedAt:0,running:false,done:false});
+ input.value='';saveAppObject(PROJECT_STORAGE,projects);renderProjectTasks();
+}
+setInterval(()=>{
+ if(!openProjectId||!Q('project-detail-shade').classList.contains('open'))return;
+ const p=projects[openProjectId];if(!p)return;
+ for(const timer of Q('project-task-list').querySelectorAll('[data-task-id]')){
+  const task=(p.tasks||[]).find(t=>t.id===timer.dataset.taskId);
+  if(task)timer.textContent=fmtTaskDuration(durationForTask(task));
+ }
+},1000);
+function workProjectTagUI(date){
+ const holder=document.createElement('div');holder.className='journal-project-tag';
+ const label=document.createElement('label');label.textContent='LINK A PROJECT';
+ const selector=document.createElement('select');
+ const blank=document.createElement('option');blank.value='';blank.textContent='No project tagged';selector.append(blank);
+ Object.values(projects).sort((a,b)=>a.name.localeCompare(b.name)).forEach(p=>{
+  const option=document.createElement('option');option.value=p.id;option.textContent=p.name+' · '+projectGroups[p.status];selector.append(option);
+ });
+ selector.value=projects[projectTags[date]]?projectTags[date]:'';
+ const badge=document.createElement('button');badge.type='button';badge.className='journal-tag-link';
+ function setBadge(){
+  const p=projects[selector.value];
+  badge.hidden=!p;if(p)badge.textContent='OPEN PROJECT: '+p.name+' ›';
+ }
+ selector.onchange=()=>{
+  if(selector.value)projectTags[date]=selector.value;else delete projectTags[date];
+  saveAppObject(TAG_STORAGE,projectTags);setBadge();
+ };
+ badge.onclick=()=>{if(selector.value)openProjectDetail(selector.value);};
+ setBadge();holder.append(label,selector,badge);
+ return holder;
+}
+function openProgramDay(index){
+ if(!programOpen||index<0||index>=6)return;
+ openProgramDayId=index;
+ Q('program-day-title').textContent=programDays[index]+' · MY PROGRAM';
+ Q('program-day-note').value=sixPrograms[index]?.note||'';
+ renderProgramDayImages();
+ show('program-day-shade');
+}
+function renderProgramDayImages(){
+ const holder=Q('program-day-images');holder.textContent='';mediaReload();
+ if(openProgramDayId<0)return;
+ const pics=mediaItems('program'+openProgramDayId,projectDefaultDate).filter(x=>x.kind==='image');
+ if(!pics.length){const hint=document.createElement('small');hint.className='media-empty';hint.textContent='No personal program image yet. Add one below.';holder.append(hint);}
+ pics.forEach(item=>holder.append(makeMediaCard(item)));
+}
+function addProgramDayImage(){
+ if(openProgramDayId<0)return;
+ saveProgramDay();pickMedia('image',projectDefaultDate,'program'+openProgramDayId);
+}
+function saveProgramDay(){
+ if(openProgramDayId<0)return;
+ sixPrograms[openProgramDayId]={note:Q('program-day-note').value.slice(0,16000)};
+ saveAppObject(PROGRAM_STORAGE,sixPrograms);toast('Program saved ✓');
+}
+function closeProgramDay(){
+ if(openProgramDayId<0)return;
+ saveProgramDay();openProgramDayId=-1;hide('program-day-shade');
+}
+function speakTo(id){
+ const node=Q(id);if(!node)return;
+ dynamicSpeechInputId=id;
+ startInMotionSpeech('dynamic');
+}
 
 /* IN MOTION 3.0 — Future-facing Work, E,E and Study journals.
    Private photos are keyed by journal and date in Android, notes in localStorage.
@@ -520,7 +723,12 @@ function workRender(){
    const save=document.createElement('button');save.type='button';save.textContent='SAVE NOTE';
    save.onclick=()=>{journalSaveNote(dayKey,area.value);small.textContent=pics.length+' MEDIA · '+(area.value.trim()?'NOTE SAVED':'NO NOTE');};
    const hint=document.createElement('small');hint.textContent='Notes are private to this device.';
-   noteWrap.append(label,area,save,hint);body.append(noteWrap);
+   const speak=document.createElement('button');speak.type='button';
+   speak.textContent='🎙 SPEAK TO WRITE';speak.className='journal-speech-button';
+   const textId='journal-note-'+journalMode+'-'+dayKey;area.id=textId;
+   speak.onclick=()=>speakTo(textId);
+   noteWrap.append(label,area,speak,save,hint);body.append(noteWrap);
+   if(journalMode==='work')body.append(workProjectTagUI(dayKey));
    if(pics.length){
     const grid=document.createElement('div');grid.className='media-grid journal-media-grid';
     pics.forEach(item=>grid.append(makeMediaCard(item)));
@@ -565,6 +773,7 @@ function openJournal(mode){
  Q('journal-hero').src=config.hero;
  Q('journal-hero-label').textContent=config.caption;
  Q('journal-intro').textContent=config.intro;
+ Q('work-project-menu').hidden=mode!=='work';
  Q('work-date').value=todayKey();Q('work-date').min=todayKey();
  Q('work-date').removeAttribute('max');
  workReload();workRender();show('work-shade');
@@ -625,6 +834,7 @@ function openProgram(){
 }
 function closeProgram(){
  if(!programOpen)return;
+ if(openProgramDayId>=0)closeProgramDay();
  programOpen=false;hide('program-shade');
  Q('program-image').removeAttribute('src');
 }
@@ -975,9 +1185,9 @@ function insertDictatedText(element,words){
  element.focus();
 }
 function startInMotionSpeech(target){
- if(!['editor','lockdown','agent'].includes(target))return;
+ if(!['editor','lockdown','agent','dynamic'].includes(target))return;
  if(state.lockdownActive&&target!=='lockdown')return;
- const node=target==='editor'?Q('editor-input'):target==='lockdown'?Q('lockdown-notes'):Q('agent-input');
+ const node=target==='dynamic'?Q(dynamicSpeechInputId):target==='editor'?Q('editor-input'):target==='lockdown'?Q('lockdown-notes'):Q('agent-input');
  if(!node)return;
  if(target==='editor'&&!Q('modal-shade').classList.contains('open'))return;
  if(target==='agent'&&!Q('agent-shade').classList.contains('open'))return;
@@ -999,11 +1209,12 @@ function startInMotionSpeech(target){
 }
 window.onInMotionSpeechResult=function(target,result){
  if(!['editor','lockdown','agent'].includes(target))return;
- const input=target==='editor'?Q('editor-input'):target==='lockdown'?Q('lockdown-notes'):Q('agent-input');
+ const input=target==='dynamic'?Q(dynamicSpeechInputId):target==='editor'?Q('editor-input'):target==='lockdown'?Q('lockdown-notes'):Q('agent-input');
  if(target==='lockdown'&&!state.lockdownActive)return;
  insertDictatedText(input,result);
  toast('Voice note inserted ✓');
  currentSpeechTarget=null;
+ dynamicSpeechInputId='';
 };
 window.onInMotionSpeechError=function(target,message){
  currentSpeechTarget=null;
@@ -1092,7 +1303,10 @@ Q('lockdown-notes').addEventListener('input',()=>{
  state.lockdownDraft=Q('lockdown-notes').value;persist();
 });
 
-window.handleAndroidBack=()=>{if(state.lockdownActive)return true;if(programOpen){closeProgram();return true;}if(Q('work-lightbox').classList.contains('open')){closeWorkPhoto();return true;}if(workOpen){closeWorkJournal();return true;}if(Q('agent-shade').classList.contains('open')){closeInMotionAgent();return true;}if(Q('stopwatch-shade').classList.contains('open')){closeStopwatch();return true;}if(Q('modal-shade').classList.contains('open')){closeEditor();return true;}
+window.handleAndroidBack=()=>{if(state.lockdownActive)return true;
+ if(openProgramDayId>=0){closeProgramDay();return true;}
+ if(Q('project-detail-shade').classList.contains('open')){closeProjectDetail();return true;}
+ if(Q('project-category-shade').classList.contains('open')){closeProjectCategory();return true;}if(programOpen){closeProgram();return true;}if(Q('work-lightbox').classList.contains('open')){closeWorkPhoto();return true;}if(workOpen){closeWorkJournal();return true;}if(Q('agent-shade').classList.contains('open')){closeInMotionAgent();return true;}if(Q('stopwatch-shade').classList.contains('open')){closeStopwatch();return true;}if(Q('modal-shade').classList.contains('open')){closeEditor();return true;}
  if(Q('settings-shade').classList.contains('open')){closeSettings();return true;}
  if(Q('history-shade').classList.contains('open')){closeHistory();return true;}
  if(Q('gallery-shade').classList.contains('open')){closeGallery();return true;}
