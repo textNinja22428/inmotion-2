@@ -62,13 +62,14 @@ public class MainActivity extends Activity {
     private Vibrator engineVibrator;
     private final Handler engineHandler=new Handler(Looper.getMainLooper());
     private boolean engineRunning=false;
+    private int engineGeneration=0;
     private final Runnable engineTimeout=()->stopEngine();
-    private void stopEngine(){engineRunning=false;engineHandler.removeCallbacks(engineTimeout);if(engineVibrator!=null)engineVibrator.cancel();}
+    private void stopEngine(){engineGeneration++;engineRunning=false;engineHandler.removeCallbacks(engineTimeout);if(engineVibrator!=null)engineVibrator.cancel();}
     private void setEngineStage(int stage){
         if(!engineRunning||engineVibrator==null||!engineVibrator.hasVibrator())return;
         engineVibrator.cancel();
-        int amplitude=stage==1?90:stage==2?180:255;
-        long[] pattern=stage==1?new long[]{0,110,490}:stage==2?new long[]{0,230,170}:new long[]{0,320,65};
+        int amplitude=stage==1?75:stage==2?130:stage==3?200:255;
+        long[] pattern=stage==1?new long[]{0,110,490}:stage==2?new long[]{0,170,240}:stage==3?new long[]{0,270,115}:new long[]{0,340,45};
         if(Build.VERSION.SDK_INT>=26){
             int[] amplitudes=new int[]{0,amplitude,0};
             engineVibrator.vibrate(VibrationEffect.createWaveform(pattern,amplitudes,0));
@@ -77,9 +78,11 @@ public class MainActivity extends Activity {
     private void startEngine(){
         stopEngine();
         engineRunning=true;
+        int generation=engineGeneration;
         setEngineStage(1);
-        engineHandler.postDelayed(()->setEngineStage(2),2000);
-        engineHandler.postDelayed(()->setEngineStage(3),4000);
+        engineHandler.postDelayed(()->{if(generation==engineGeneration)setEngineStage(2);},2000);
+        engineHandler.postDelayed(()->{if(generation==engineGeneration)setEngineStage(3);},4000);
+        engineHandler.postDelayed(()->{if(generation==engineGeneration)setEngineStage(4);},6000);
         engineHandler.postDelayed(engineTimeout,12000);
     }
     private MediaPlayer music;
