@@ -1349,6 +1349,32 @@ function completeLockdown(){
  Q('lockdown-instruction').textContent='Write at least one line to override. Your notes are stored on this device.';
  toast('Override complete. Seal intact.');
 }
+/* THE ENGINE — hold the Conditions emblem to ramp haptics.
+   Native Android haptics are cancelled on release and the Activity enforces a 12s cap. */
+const engineTrigger=Q('engine-trigger');
+let enginePressed=false;
+function engineStop(){
+ if(!enginePressed)return;
+ enginePressed=false;
+ engineTrigger.classList.remove('engine-active');
+ try{window.NativeAudio?.stopEngine();}catch(e){}
+ try{navigator.vibrate?.(0);}catch(e){}
+}
+engineTrigger.addEventListener('pointerdown',e=>{
+ e.preventDefault();e.stopPropagation();
+ if(page!=='cover'||state.lockdownActive||enginePressed)return;
+ enginePressed=true;
+ engineTrigger.classList.add('engine-active');
+ try{engineTrigger.setPointerCapture(e.pointerId);}catch(err){}
+ try{if(window.NativeAudio?.startEngine)window.NativeAudio.startEngine();else navigator.vibrate?.([100,350,170,280,270]);}catch(err){}
+});
+for(const eventName of ['pointerup','pointercancel','lostpointercapture']){
+ engineTrigger.addEventListener(eventName,e=>{e.stopPropagation();engineStop();});
+}
+engineTrigger.addEventListener('contextmenu',e=>e.preventDefault());
+engineTrigger.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();});
+window.addEventListener('blur',engineStop);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)engineStop();});
 const sealTrigger=Q('seal-trigger');
 sealTrigger.addEventListener('pointerup',e=>e.stopPropagation());
 sealTrigger.addEventListener('dblclick',e=>e.stopPropagation());
