@@ -1045,3 +1045,18 @@ body.theme-dark .board-media-tile{background:#242424;border-color:#aa925d}
  font-size:10px;max-width:100%;overflow-wrap:anywhere;
 }
 .journal-no-projects{font:11px/1.4 Arial,sans-serif;color:#b6a58a}
+
+/* Compact, searchable, collapsible project picker */
+.journal-project-toggle{
+ display:block;width:100%;min-height:39px;padding:10px 12px;
+ color:#e7c98e;background:#263039;border:1px solid #8c774d;
+ border-radius:8px;font:800 11px Arial,sans-serif;letter-spacing:.4px;
+}
+.journal-project-panel{display:flex;flex-direction:column;gap:8px}
+.journal-project-panel[hidden]{display:none!important}
+.journal-project-search{
+ box-sizing:border-box;width:100%;min-height:40px;padding:9px 12px;
+ background:#141a1d;color:#f7ead1;border:1px solid #8c774d;
+ border-radius:8px;font:500 13px Arial,sans-serif;
+}
+.journal-project-choice[hidden]{display:none!important}
