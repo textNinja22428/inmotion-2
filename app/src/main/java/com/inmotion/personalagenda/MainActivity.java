@@ -2,6 +2,12 @@ package com.inmotion.personalagenda;
 
 import android.app.Activity;
 import android.os.Bundle;
+import android.os.Build;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
+import android.os.VibratorManager;
+import android.os.Handler;
+import android.os.Looper;
 import android.content.SharedPreferences;
 import android.content.res.AssetFileDescriptor;
 import android.media.AudioAttributes;
@@ -53,6 +59,29 @@ import android.webkit.WebViewClient;
 
 public class MainActivity extends Activity {
     private WebView webView;
+    private Vibrator engineVibrator;
+    private final Handler engineHandler=new Handler(Looper.getMainLooper());
+    private boolean engineRunning=false;
+    private final Runnable engineTimeout=()->stopEngine();
+    private void stopEngine(){engineRunning=false;engineHandler.removeCallbacks(engineTimeout);if(engineVibrator!=null)engineVibrator.cancel();}
+    private void setEngineStage(int stage){
+        if(!engineRunning||engineVibrator==null||!engineVibrator.hasVibrator())return;
+        engineVibrator.cancel();
+        int amplitude=stage==1?90:stage==2?180:255;
+        long[] pattern=stage==1?new long[]{0,110,490}:stage==2?new long[]{0,230,170}:new long[]{0,320,65};
+        if(Build.VERSION.SDK_INT>=26){
+            int[] amplitudes=new int[]{0,amplitude,0};
+            engineVibrator.vibrate(VibrationEffect.createWaveform(pattern,amplitudes,0));
+        }else engineVibrator.vibrate(pattern,0);
+    }
+    private void startEngine(){
+        stopEngine();
+        engineRunning=true;
+        setEngineStage(1);
+        engineHandler.postDelayed(()->setEngineStage(2),2000);
+        engineHandler.postDelayed(()->setEngineStage(3),4000);
+        engineHandler.postDelayed(engineTimeout,12000);
+    }
     private MediaPlayer music;
     private SoundPool soundPool;
     private int selectSoundId = 0;
@@ -145,6 +174,8 @@ public class MainActivity extends Activity {
         getWindow().getDecorView().setSystemUiVisibility(
             View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
         preferences = getSharedPreferences("in_motion_settings", MODE_PRIVATE);
+        if(Build.VERSION.SDK_INT>=31)engineVibrator=getSystemService(VibratorManager.class).getDefaultVibrator();
+        else engineVibrator=(Vibrator)getSystemService(VIBRATOR_SERVICE);
         aiSettings = getSharedPreferences("in_motion_private_ai", MODE_PRIVATE);
         webView = new WebView(this);
         webView.setBackgroundColor(0xffffffff);
@@ -604,6 +635,9 @@ public class MainActivity extends Activity {
     }
 
     public class AudioBridge {
+        @JavascriptInterface public void startEngine(){runOnUiThread(()->MainActivity.this.startEngine());}
+        @JavascriptInterface public void stopEngine(){runOnUiThread(()->MainActivity.this.stopEngine());}
+
 
         @JavascriptInterface public void setWorkMode(boolean enabled){
             runOnUiThread(()->changeJournalMode(enabled?"work":""));
@@ -955,6 +989,7 @@ public class MainActivity extends Activity {
         if(webView != null) webView.onResume();
     }
     @Override protected void onPause() {
+        stopEngine();
         isResumed = false;
         syncPlayback();syncLockdownMusic();syncWorkMusic();
         if(webView != null) webView.onPause(); super.onPause();
@@ -966,6 +1001,7 @@ public class MainActivity extends Activity {
         });
     }
     @Override protected void onDestroy() {
+        stopEngine();
         if(lockdownMusic!=null){lockdownMusic.release();lockdownMusic=null;}
         if(workMusic!=null){workMusic.release();workMusic=null;}
         if(eeMusic!=null){eeMusic.release();eeMusic=null;}
