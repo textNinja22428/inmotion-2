@@ -344,7 +344,7 @@ public class MainActivity extends Activity {
     }
     private boolean validMediaCategory(String category){
         if("work".equals(category)||"ee".equals(category)||"study".equals(category))return true;
-        return category!=null&&category.matches("slot[0-7]");
+        return category!=null&&(category.matches("slot[0-7]")||category.matches("program[0-5]")||category.matches("project-[a-f0-9-]{36}"));
     }
     private JSONArray mergedMedia() {
         JSONArray merged=new JSONArray();
@@ -382,7 +382,8 @@ public class MainActivity extends Activity {
         String ext="image".equals(kind)?".jpg":
              "video/mp4".equals(mime)?".mp4":
              "video/webm".equals(mime)?".webm":
-             "video/3gpp".equals(mime)?".3gp":null;
+             "video/3gpp".equals(mime)?".3gp":
+             "file".equals(kind)?".bin":null;
         return ext==null?null:new File(mediaFolder(),id+ext);
     }
     private JSONObject findMedia(String id) {
@@ -437,6 +438,35 @@ public class MainActivity extends Activity {
             String id=UUID.randomUUID().toString();
             String mime=getContentResolver().getType(uri);
             if(mime==null)mime="";
+            if("file".equals(kind)){
+                long limit=35L*1024*1024;
+                long size=originalSize(uri);
+                if(size>limit||totalStoredMediaSize()+Math.max(0,size)>MAX_MEDIA_TOTAL_BYTES)return false;
+                File file=new File(mediaFolder(),id+".bin");
+                long copied=0;
+                try(InputStream input=getContentResolver().openInputStream(uri);
+                    OutputStream output=new FileOutputStream(file)){
+                    if(input==null)return false;
+                    byte[] buffer=new byte[32768];int n;
+                    while((n=input.read(buffer))!=-1){
+                        copied+=n;
+                        if(copied>limit||copied+totalStoredMediaSize()>MAX_MEDIA_TOTAL_BYTES)
+                            throw new IllegalStateException("Attachment exceeds local limit");
+                        output.write(buffer,0,n);
+                    }
+                }catch(Exception e){file.delete();Log.w("IN_MOTION","File import failed",e);return false;}
+                if(copied<=0){file.delete();return false;}
+                try {
+                    JSONObject entry=new JSONObject();
+                    entry.put("id",id);entry.put("category",category);entry.put("date",date);
+                    entry.put("kind","file");entry.put("mime",mime.isEmpty()?"application/octet-stream":mime);
+                    entry.put("name",originalDisplayName(uri).substring(0,Math.min(100,originalDisplayName(uri).length())));
+                    entry.put("bytes",copied);entry.put("createdAt",System.currentTimeMillis());
+                    JSONArray entries=readNewMedia();entries.put(entry);
+                    preferences.edit().putString("inmotion_media_v1",entries.toString()).apply();
+                    return true;
+                }catch(Exception e){file.delete();return false;}
+            }
             if("video".equals(kind)) {
                 if(!("video/mp4".equals(mime)||"video/webm".equals(mime)||"video/3gpp".equals(mime))){
                     Log.w("IN_MOTION","Unsupported video MIME "+mime);return false;
@@ -610,13 +640,13 @@ public class MainActivity extends Activity {
             return readMediaJPEG(id);
         }
         @JavascriptInterface public void pickInMotionMedia(String kind,String date,String category){
-            if(!("image".equals(kind)||"video".equals(kind)))return;
+            if(!("image".equals(kind)||"video".equals(kind)||"file".equals(kind)))return;
             if(date==null||!date.matches("\\d{4}-\\d{2}-\\d{2}")||!validMediaCategory(category))return;
             runOnUiThread(()->{
                 pendingMediaKind=kind;pendingMediaDate=date;pendingMediaCategory=category;
                 Intent intent=new Intent(Intent.ACTION_OPEN_DOCUMENT);
                 intent.addCategory(Intent.CATEGORY_OPENABLE);
-                intent.setType("image".equals(kind)?"image/*":"video/*");
+                intent.setType("image".equals(kind)?"image/*":"video".equals(kind)?"video/*":"*/*");
                 intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,"image".equals(kind));
                 try{startActivityForResult(intent,MEDIA_PICKER_REQUEST);}
                 catch(Exception e){notifyMediaSaved("Media picker unavailable");}
@@ -624,6 +654,24 @@ public class MainActivity extends Activity {
         }
         @JavascriptInterface public void playInMotionVideo(String id){
             runOnUiThread(()->showMediaVideo(id));
+        }
+        @JavascriptInterface public void openInMotionFile(String id){
+            runOnUiThread(()->{
+                JSONObject entry=findMedia(id);
+                if(entry==null||!"file".equals(entry.optString("kind")))return;
+                File file=storedMediaFile(entry);
+                if(file==null||!file.isFile())return;
+                try{
+                    Uri uri=new Uri.Builder().scheme("content")
+                      .authority(getPackageName()+".attachments").appendPath(id).build();
+                    Intent intent=new Intent(Intent.ACTION_VIEW);
+                    intent.setDataAndType(uri,entry.optString("mime","application/octet-stream"));
+                    intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    startActivity(Intent.createChooser(intent,"Open project attachment"));
+                }catch(Exception e){
+                    Toast.makeText(MainActivity.this,"No compatible file viewer installed",Toast.LENGTH_LONG).show();
+                }
+            });
         }
         @JavascriptInterface public boolean deleteInMotionMedia(String id){
             return deleteMediaAttachment(id);
@@ -764,7 +812,7 @@ public class MainActivity extends Activity {
             runOnUiThread(() -> {syncPlayback();syncWorkMusic();});
         }
         @JavascriptInterface public void startVoiceInput(String target) {
-            if (!("editor".equals(target) || "lockdown".equals(target) || "agent".equals(target))) return;
+            if (!("editor".equals(target) || "lockdown".equals(target) || "agent".equals(target) || "dynamic".equals(target))) return;
             runOnUiThread(() -> {
                 if (speechPromptActive) return;
                 pendingSpeechTarget = target;
@@ -848,7 +896,7 @@ public class MainActivity extends Activity {
                 for(Uri uri:selection)if(saveMediaAttachment(uri,category,date,kind))saved++;
                 final int count=saved;
                 String message=count>0
-                  ?count+" "+("video".equals(kind)?"video":"photo")+" attachment(s) saved"
+                  ?count+" "+("video".equals(kind)?"video":"file".equals(kind)?"file":"photo")+" attachment(s) saved"
                   :"Could not save attachment (limit: 150 MB/video, 750 MB total; MP4 preferred)";
                 runOnUiThread(()->notifyMediaSaved(message));
             },"inmotion-media-import").start();
