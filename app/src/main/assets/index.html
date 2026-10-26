@@ -81,7 +81,11 @@
 <div id="work-shade" class="work-shade" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Work Journal">
  <div class="work-header"><button class="work-return" type="button" onclick="closeWorkJournal()" aria-label="Back to IN MOTION">‹</button><div><span id="journal-eyebrow">IN MOTION / PROFESSIONAL RECORD</span><strong id="journal-title">WORK JOURNAL</strong></div><button class="work-settings" type="button" onclick="openInMotionAgent()" aria-label="Ask in Motion">✦</button></div>
  <div id="work-scroll" class="work-scroll">
-  <div class="work-hero"><img id="journal-hero" src="work_hero.jpg" alt="Work journal cover art" onerror="this.style.display='none';this.parentElement.classList.add('work-hero-fallback')" draggable="false"><div id="journal-hero-label" class="work-hero-label">MAKE TODAY COUNT</div></div>
+  <div class="work-hero"><img id="journal-hero" src="work_hero.jpg" alt="Work journal cover art" onerror="this.style.display='none';this.parentElement.classList.add('work-hero-fallback')" draggable="false"><div id="work-project-menu" class="work-project-menu" hidden>
+  <button type="button" onclick="openProjectCategory('active')">ACTIVE PROJECTS <span>›</span></button>
+  <button type="button" onclick="openProjectCategory('archived')">ARCHIVED PROJECTS <span>›</span></button>
+  <button type="button" onclick="openProjectCategory('potential')">POTENTIAL LIST <span>›</span></button>
+ </div><div id="journal-hero-label" class="work-hero-label">MAKE TODAY COUNT</div></div>
   <p id="journal-intro" class="work-intro">The work you put in. The days you lived. The evidence you choose to keep.</p>
   <button id="program-launch" type="button" class="program-launch" onclick="openProgram()" hidden><span>THE PROGRAM</span><small>VIEW CURRENT ROUTINE</small><span aria-hidden="true">›</span></button>
   <div class="work-toolbar"><label>MEDIA DATE <input id="work-date" type="date" /></label><button type="button" onclick="addWorkPhotos()">+ PHOTO</button><button type="button" onclick="addJournalMedia('video')">+ VIDEO</button></div>
@@ -89,10 +93,37 @@
   <div id="work-days" class="work-days"></div><button id="work-more" class="work-more" onclick="loadMoreWorkDays()" type="button">LOAD UPCOMING DAYS</button>
  </div>
 </div>
+<div id="project-category-shade" class="project-shade" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Project category">
+ <header class="subpage-head"><button onclick="closeProjectCategory()" type="button">‹</button><strong id="project-category-title">ACTIVE PROJECTS</strong><button onclick="closeProjectCategory()" type="button">×</button></header>
+ <div class="subpage-scroll project-background"><p id="project-category-description"></p><button class="project-create" onclick="createProject()" type="button">+ NEW PROJECT</button><div id="project-category-list"></div></div>
+</div>
+<div id="project-detail-shade" class="project-shade project-detail-shade" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Project detail">
+ <header class="subpage-head"><button onclick="closeProjectDetail()" type="button">‹</button><strong id="project-detail-title">PROJECT</strong><button onclick="closeProjectDetail()" type="button">×</button></header>
+ <div class="subpage-scroll project-background">
+  <label class="subpage-label" for="project-name">PROJECT NAME</label><input id="project-name" maxlength="120" placeholder="Project title">
+  <label class="subpage-label" for="project-description">PROJECT NOTES</label>
+  <div class="subpage-note"><textarea id="project-description" rows="6" placeholder="Notes, priorities, next actions..."></textarea><button type="button" onclick="speakTo('project-description')">🎙 SPEAK</button></div>
+  <div class="subpage-actions"><button onclick="saveProject()" type="button">SAVE PROJECT</button><button onclick="cycleProjectStatus()" id="project-status-button" type="button">MOVE CATEGORY</button></div>
+  <h3>PROJECT MEDIA & FILES</h3><div id="project-media-grid" class="media-grid"></div>
+  <div class="subpage-actions"><button onclick="addProjectAttachment('image')" type="button">+ PHOTO</button><button onclick="addProjectAttachment('video')" type="button">+ VIDEO</button><button onclick="addProjectAttachment('file')" type="button">+ FILE</button></div>
+  <h3>PROJECT TASKS</h3><div id="project-task-list"></div><div class="subpage-actions"><input id="project-new-task" maxlength="160" placeholder="New task..."><button onclick="addProjectTask()" type="button">+ TASK</button></div>
+  <small class="subpage-footnote">Tasks and timers stay on this device. Timing is measured from real elapsed time, even if you leave the screen.</small>
+ </div>
+</div>
+<div id="program-day-shade" class="project-shade program-day-shade" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Program day">
+ <header class="subpage-head"><button onclick="closeProgramDay()" type="button">‹</button><strong id="program-day-title">MONDAY</strong><button onclick="closeProgramDay()" type="button">×</button></header>
+ <div class="subpage-scroll ee-background">
+  <div id="program-day-images" class="media-grid program-day-images"></div>
+  <div class="subpage-actions"><button type="button" onclick="addProgramDayImage()">CHANGE / ADD IMAGE</button></div>
+  <label class="subpage-label" for="program-day-note">PROGRAM NOTES</label>
+  <div class="subpage-note"><textarea id="program-day-note" rows="8" placeholder="Plan, exercises, sets, meals, or preparation..."></textarea><button type="button" onclick="speakTo('program-day-note')">🎙 SPEAK</button></div>
+  <button type="button" class="subpage-save" onclick="saveProgramDay()">SAVE PROGRAM NOTES</button>
+ </div>
+</div>
 <div id="program-shade" class="program-shade" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="program-title">
  <div class="program-head"><button type="button" onclick="closeProgram()" aria-label="Back to E,E">‹</button><div><span>EAT / PROPER / EXERCISE</span><strong id="program-title">THE PROGRAM</strong></div><button type="button" onclick="closeProgram()" aria-label="Close program">×</button></div>
  <div class="program-body"><div class="program-art"><img id="program-image" alt="Your current training program" src="program_default.jpg" onerror="this.onerror=null;this.src='program_default.svg'"></div>
- <p>Tap CHANGE IMAGE to replace your routine with a photo from your phone. Your selection stays saved privately on this device.</p></div>
+ <div class="program-six"><button onclick="openProgramDay(0)">MONDAY</button><button onclick="openProgramDay(1)">TUESDAY</button><button onclick="openProgramDay(2)">WEDNESDAY</button><button onclick="openProgramDay(3)">THURSDAY</button><button onclick="openProgramDay(4)">FRIDAY</button><button onclick="openProgramDay(5)">SATURDAY</button></div><p>Tap a day to open its own editable picture and notes. CHANGE IMAGE below replaces the main program artwork.</p></div>
  <div class="program-actions"><button type="button" onclick="changeProgramImage()">CHANGE IMAGE</button><button type="button" onclick="resetProgramImage()">RESET DEFAULT</button></div>
 </div>
 <div id="work-lightbox" class="work-lightbox" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Work photo"><button type="button" onclick="closeWorkPhoto()" aria-label="Close photo">×</button><img id="work-lightbox-photo" alt="Saved work photo" /></div>
