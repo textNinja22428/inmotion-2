@@ -909,7 +909,7 @@ body.theme-dark .board-media-tile{background:#242424;border-color:#aa925d}
 .work-project-menu button{
  min-height:36px;display:flex;align-items:center;justify-content:space-between;
  padding:7px 12px;border-radius:7px;border:1px solid #e4bb67a3;
- background:linear-gradient(95deg,#131619ec,#343c41cc),url('work_hero.jpg') center/cover;
+ background:linear-gradient(95deg,#131619d3,#343c41a8),url('ey_project_background.jpg') center/cover;
  color:#f7e6be;text-shadow:0 1px 3px #000b;
  font:900 11px Arial,sans-serif;letter-spacing:.7px;
  box-shadow:0 4px 9px #0004;
@@ -932,7 +932,7 @@ body.theme-dark .board-media-tile{background:#242424;border-color:#aa925d}
 .subpage-scroll{padding:16px;min-height:0;flex:1;overflow:auto;
  overscroll-behavior:contain;display:flex;flex-direction:column;gap:13px}
 .project-background{
- background:linear-gradient(#131b21db,#12171bed),url('work_hero.jpg') center/cover fixed;
+ background:linear-gradient(#131b21c7,#12171bb3),url('ey_project_background.jpg') center/cover fixed;
 }
 .ee-background{
  background:linear-gradient(#222020ba,#19191dde),url('ee_hero.jpg') center/cover fixed;
