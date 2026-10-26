@@ -462,7 +462,7 @@ window.onInMotionMediaChanged=function(message){
 const PROJECT_STORAGE='inmotion_projects_v33',TAG_STORAGE='inmotion_project_tags_v33',
       PROGRAM_STORAGE='inmotion_six_programs_v33';
 const projectGroups={active:'ACTIVE PROJECTS',archived:'ARCHIVED PROJECTS',potential:'POTENTIAL LIST'};
-const programDays=['MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY'];
+const programDays=['LEGS','ARMS','SHOULDER','CHEST','BACK','TRICEPS'];
 const projectDefaultDate='2000-01-01';
 function readSavedObject(key,fallback){
  try{const item=JSON.parse(localStorage.getItem(key)||'null');return item&&typeof item==='object'?item:fallback;}catch(e){return fallback;}
@@ -597,26 +597,80 @@ setInterval(()=>{
   if(task)timer.textContent=fmtTaskDuration(durationForTask(task));
  }
 },1000);
+/* Accept legacy one-project daily tags as well as the new many-project format.
+   Older entries stay linked without rewriting existing saved data. */
+function linkedProjectIdsForDay(date){
+ const stored=projectTags[date];
+ const ids=Array.isArray(stored)?stored:typeof stored==='string'&&stored?[stored]:[];
+ return [...new Set(ids.filter(id=>typeof id==='string'&&projects[id]))];
+}
 function workProjectTagUI(date){
- const holder=document.createElement('div');holder.className='journal-project-tag';
- const label=document.createElement('label');label.textContent='LINK A PROJECT';
- const selector=document.createElement('select');
- const blank=document.createElement('option');blank.value='';blank.textContent='No project tagged';selector.append(blank);
- Object.values(projects).sort((a,b)=>a.name.localeCompare(b.name)).forEach(p=>{
-  const option=document.createElement('option');option.value=p.id;option.textContent=p.name+' · '+projectGroups[p.status];selector.append(option);
- });
- selector.value=projects[projectTags[date]]?projectTags[date]:'';
- const badge=document.createElement('button');badge.type='button';badge.className='journal-tag-link';
- function setBadge(){
-  const p=projects[selector.value];
-  badge.hidden=!p;if(p)badge.textContent='OPEN PROJECT: '+p.name+' ›';
+ const holder=document.createElement('div');
+ holder.className='journal-project-tag journal-project-multi';
+ const header=document.createElement('div');header.className='journal-project-heading';
+ const label=document.createElement('strong');label.textContent='LINK PROJECTS';
+ const count=document.createElement('small');
+ header.append(label,count);
+ const list=document.createElement('div');list.className='journal-project-choices';
+ const links=document.createElement('div');links.className='journal-project-links';
+ let selected=linkedProjectIdsForDay(date);
+ const available=Object.values(projects)
+   .filter(p=>p&&typeof p.id==='string')
+   .sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));
+ function renderLinks(){
+  links.textContent='';
+  count.textContent=selected.length+' SELECTED';
+  if(!selected.length){
+   const hint=document.createElement('small');hint.className='journal-no-projects';
+   hint.textContent='No project linked to this date.';
+   links.append(hint);return;
+  }
+  selected.forEach(id=>{
+   const project=projects[id];
+   if(!project)return;
+   const button=document.createElement('button');
+   button.type='button';button.className='journal-tag-link';
+   button.textContent=(project.name||'Untitled Project')+' ›';
+   button.setAttribute('aria-label','Open project '+(project.name||'Untitled Project'));
+   button.onclick=()=>openProjectDetail(id);
+   links.append(button);
+  });
  }
- selector.onchange=()=>{
-  if(selector.value)projectTags[date]=selector.value;else delete projectTags[date];
-  saveAppObject(TAG_STORAGE,projectTags);setBadge();
- };
- badge.onclick=()=>{if(selector.value)openProjectDetail(selector.value);};
- setBadge();holder.append(label,selector,badge);
+ if(!available.length){
+  const empty=document.createElement('small');
+  empty.className='journal-no-projects';
+  empty.textContent='Create a project under Active Projects, Archived Projects or Potential List first.';
+  list.append(empty);
+ } else {
+  available.forEach(project=>{
+   const row=document.createElement('label');
+   row.className='journal-project-choice';
+   const checkbox=document.createElement('input');
+   checkbox.type='checkbox';checkbox.checked=selected.includes(project.id);
+   checkbox.setAttribute('aria-label','Link '+(project.name||'Untitled Project')+' to '+date);
+   const name=document.createElement('span');
+   const title=document.createElement('strong');title.textContent=project.name||'Untitled Project';
+   const group=document.createElement('small');group.textContent=projectGroups[project.status]||'PROJECT';
+   name.append(title,group);row.append(checkbox,name);
+   checkbox.onchange=()=>{
+    const next=checkbox.checked
+      ? [...selected,project.id]
+      : selected.filter(id=>id!==project.id);
+    selected=[...new Set(next)];
+    if(selected.length)projectTags[date]=selected;
+    else delete projectTags[date];
+    if(!saveAppObject(TAG_STORAGE,projectTags)){
+      checkbox.checked=!checkbox.checked;
+      selected=linkedProjectIdsForDay(date);
+      return;
+    }
+    renderLinks();
+   };
+   list.append(row);
+  });
+ }
+ renderLinks();
+ holder.append(header,list,links);
  return holder;
 }
 function openProgramDay(index){
