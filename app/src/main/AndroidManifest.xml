@@ -8,6 +8,10 @@
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="false"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        <provider android:name=".InMotionAttachmentProvider"
+            android:authorities="${applicationId}.attachments"
+            android:exported="false"
+            android:grantUriPermissions="true" />
         <activity
             android:name=".MainActivity"
             android:screenOrientation="portrait"
