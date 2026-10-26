@@ -384,7 +384,7 @@ function addJournalMedia(kind,date){
  pickMedia(kind,key,journalMode);
 }
 function pickMedia(kind,date,category){
- if(kind!=='image'&&kind!=='video')return;
+ if(kind!=='image'&&kind!=='video'&&kind!=='file')return;
  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){toast('Choose a valid date');return;}
  if(!window.NativeAudio||typeof window.NativeAudio.pickInMotionMedia!=='function'){
   toast('Media attachments require Android.');return;
