@@ -22,3 +22,8 @@ separately with the 3.3.1 stable APK. Do not run it without an explicit user con
 
 For production-grade releases use a securely stored, permanent release keystore with
 restricted access and a recovery plan, rather than relying indefinitely on CI cache.
+
+The GitHub debug build explicitly points Gradle's signing configuration at
+`$HOME/.android/debug.keystore` to prevent Android Gradle Plugin from
+silently generating or selecting a different debug key. CI must fail rather
+than produce an unsigned APK if the expected key cannot be read.
