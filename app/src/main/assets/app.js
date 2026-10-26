@@ -611,7 +611,13 @@ function workProjectTagUI(date){
  const label=document.createElement('strong');label.textContent='LINK PROJECTS';
  const count=document.createElement('small');
  header.append(label,count);
+ const toggle=document.createElement('button');toggle.type='button';toggle.className='journal-project-toggle';toggle.textContent='+ ADD / REMOVE PROJECTS';toggle.setAttribute('aria-expanded','false');
+ const panel=document.createElement('div');panel.className='journal-project-panel';panel.hidden=true;
+ const search=document.createElement('input');search.type='search';search.className='journal-project-search';search.placeholder='Search projects...';search.setAttribute('aria-label','Search projects');
  const list=document.createElement('div');list.className='journal-project-choices';
+ panel.append(search,list);
+ toggle.onclick=()=>{panel.hidden=!panel.hidden;toggle.setAttribute('aria-expanded',String(!panel.hidden));toggle.textContent=panel.hidden?'+ ADD / REMOVE PROJECTS':'CLOSE PROJECT SELECTOR';if(!panel.hidden)search.focus();};
+ search.oninput=()=>{const q=search.value.trim().toLocaleLowerCase();for(const row of list.children){row.hidden=!row.dataset.projectName?.includes(q);}};
  const links=document.createElement('div');links.className='journal-project-links';
  let selected=linkedProjectIdsForDay(date);
  const available=Object.values(projects)
@@ -644,7 +650,7 @@ function workProjectTagUI(date){
  } else {
   available.forEach(project=>{
    const row=document.createElement('label');
-   row.className='journal-project-choice';
+   row.className='journal-project-choice';row.dataset.projectName=String(project.name||'Untitled Project').toLocaleLowerCase();
    const checkbox=document.createElement('input');
    checkbox.type='checkbox';checkbox.checked=selected.includes(project.id);
    checkbox.setAttribute('aria-label','Link '+(project.name||'Untitled Project')+' to '+date);
@@ -670,7 +676,7 @@ function workProjectTagUI(date){
   });
  }
  renderLinks();
- holder.append(header,list,links);
+ holder.append(header,links,toggle,panel);
  return holder;
 }
 function openProgramDay(index){
