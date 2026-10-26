@@ -1062,5 +1062,5 @@ body.theme-dark .board-media-tile{background:#242424;border-color:#aa925d}
 .journal-project-choice[hidden]{display:none!important}
 
 /* THE ENGINE: invisible hold zone over the right-side Conditions emblem */
-.engine-trigger{position:absolute;z-index:10;left:72%;top:50%;width:23%;height:12%;padding:0;border:0;border-radius:50%;background:transparent;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;}
+.engine-trigger{position:absolute;z-index:50;left:72%;top:73%;width:23%;height:17%;padding:0;border:0;border-radius:50%;background:transparent;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;}
 .engine-trigger.engine-active{outline:2px solid #d4af6380;outline-offset:3px;box-shadow:0 0 20px #e8b85e77;}
