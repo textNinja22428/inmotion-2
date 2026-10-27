@@ -763,7 +763,7 @@ function workRender(){
  for(const item of relevant)if(item.date&&!keys.includes(item.date))keys.push(item.date);
  for(const key of Object.keys(journalNotes[journalMode]||{}))
   if(!keys.includes(key))keys.push(key);
- keys.sort((a,b)=>a<todayKey()&&b>=todayKey()?1:b<todayKey()&&a>=todayKey()?-1:a.localeCompare(b));
+ keys.sort((a,b)=>a.localeCompare(b));
  for(const dayKey of keys){
   const pics=relevant.filter(x=>x.date===dayKey);
   const note=journalStoredNote(dayKey);
