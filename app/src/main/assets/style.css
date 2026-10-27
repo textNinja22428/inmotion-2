@@ -1078,3 +1078,6 @@ body.theme-dark .board-media-tile{background:#242424;border-color:#aa925d}
 #song-import{flex:0 0 auto;font:800 18px Arial,sans-serif;width:29px;height:29px;border-radius:50%;border:1px solid #bca278;background:#ffffffda;color:#987644}
 body.theme-dark .song-next{color:#f6ebd9}
 @media(max-width:390px){.music-widget{right:24%;left:5%}.song-equalizer{gap:2px}.song-equalizer i{width:2px}}
+
+/* Keep cover date and greeting below the soundtrack header */
+#cover-page .date-panel{top:calc(max(19px,env(safe-area-inset-top)) + 78px)}
