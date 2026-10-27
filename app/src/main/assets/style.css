@@ -1081,3 +1081,11 @@ body.theme-dark .song-next{color:#f6ebd9}
 
 /* Keep cover date and greeting below the soundtrack header */
 #cover-page .date-panel{top:calc(max(19px,env(safe-area-inset-top)) + 78px)}
+
+/* Clean cover header based on approved one-line date concept. */
+#cover-page .date-panel{top:calc(max(19px,env(safe-area-inset-top)) + 46px);left:7%;right:21%;max-width:none;}
+#cover-page .date-weekday{font:400 clamp(15px,3.9vw,21px)/1.3 Arial,Helvetica,sans-serif;letter-spacing:0;margin:0 0 9px;text-transform:none;white-space:nowrap;}
+#cover-page .date-panel .date-eyebrow{font-size:10px;letter-spacing:2px;}
+#cover-page .date-panel .time-greeting{margin-top:11px;max-width:250px;}
+#cover-page #date-long{display:none!important;}
+@media(max-width:360px){#cover-page .date-panel{right:17%}#cover-page .date-weekday{font-size:14px}}
