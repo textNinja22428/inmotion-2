@@ -68,7 +68,7 @@ function prettyDate(key,options){
  return new Intl.DateTimeFormat('tr-TR',options).format(date);
 }
 function updateDate(){
- const d=new Date(); Q('date-weekday').textContent=new Intl.DateTimeFormat('tr-TR',{weekday:'long'}).format(d).toLocaleUpperCase('tr-TR');
+ const d=new Date(); Q('date-weekday').textContent=new Intl.DateTimeFormat('tr-TR',{weekday:'long'}).format(d).toLocaleUpperCase('tr-TR')+' - '+new Intl.DateTimeFormat('tr-TR',{day:'numeric',month:'long',year:'numeric'}).format(d);
  Q('date-long').textContent=new Intl.DateTimeFormat('tr-TR',{day:'numeric',month:'long',year:'numeric'}).format(d);
  const hour=d.getHours();
  const greetings=[
