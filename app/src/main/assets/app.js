@@ -447,7 +447,7 @@ function renderSlotMedia(){
  attachments.forEach(item=>target.append(makeMediaCard(item)));
 }
 window.onInMotionMediaChanged=function(message){
- mediaReload();workPhotoCache.clear();
+ workReload();workPhotoCache.clear();
  if(editingSlot>=0)renderSlotMedia();
  if(workOpen)workRender();
  if(openProjectId)projectDetailMedia();
@@ -757,6 +757,8 @@ function workRender(){
  const holder=Q('work-days');holder.textContent='';
  const relevant=workPhotos.filter(x=>(x.category||'work')===journalMode);
  const keys=Array.from({length:workLoaded},(_,n)=>workDate(n));
+ const selectedDate=Q('work-date').value;
+ if(/^\d{4}-\d{2}-\d{2}$/.test(selectedDate)&&!keys.includes(selectedDate))keys.push(selectedDate);
  // Allow every future date with saved photos/notes, without creating infinite empty rows.
  for(const item of relevant)if(item.date&&!keys.includes(item.date))keys.push(item.date);
  for(const key of Object.keys(journalNotes[journalMode]||{}))
@@ -765,7 +767,7 @@ function workRender(){
  for(const dayKey of keys){
   const pics=relevant.filter(x=>x.date===dayKey);
   const note=journalStoredNote(dayKey);
-  const card=document.createElement('section');card.className='work-day';
+  const card=document.createElement('section');card.className='work-day';card.dataset.date=dayKey;
   const button=document.createElement('button');button.className='work-day-head';button.type='button';
   const header=document.createElement('span'),title=document.createElement('strong'),small=document.createElement('small');
   title.textContent=workLabel(dayKey);
@@ -810,7 +812,7 @@ function workRender(){
    if(expanded){workExpanded.add(dayKey);populate();}else workExpanded.delete(dayKey);
   };
   card.append(button,body);holder.append(card);
-  if(workExpanded.has(dayKey)||(!workExpanded.size&&dayKey===todayKey())){
+  if(workExpanded.has(dayKey)||(!workExpanded.size&&dayKey===(/^\d{4}-\d{2}-\d{2}$/.test(Q('work-date').value)?Q('work-date').value:todayKey()))){
    card.classList.add('open');populate();
   }
  }
@@ -836,6 +838,7 @@ function openJournal(mode){
  Q('work-project-menu').hidden=mode!=='work';
  Q('work-date').value=todayKey();Q('work-date').removeAttribute('min');
  Q('work-date').removeAttribute('max');
+ Q('work-date').onchange=()=>{workExpanded=new Set([Q('work-date').value]);workRender();const chosen=Array.from(Q('work-days').children).find(card=>card.dataset.date===Q('work-date').value);if(chosen)chosen.scrollIntoView({block:'start',behavior:'smooth'});};
  workReload();workRender();show('work-shade');
  if(window.NativeAudio?.setJournalMode){
   try{window.NativeAudio.setJournalMode(mode);}catch(e){}
