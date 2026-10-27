@@ -834,7 +834,7 @@ function openJournal(mode){
  Q('journal-hero-label').textContent=config.caption;
  Q('journal-intro').textContent=config.intro;
  Q('work-project-menu').hidden=mode!=='work';
- Q('work-date').value=todayKey();Q('work-date').min=todayKey();
+ Q('work-date').value=todayKey();Q('work-date').removeAttribute('min');
  Q('work-date').removeAttribute('max');
  workReload();workRender();show('work-shade');
  if(window.NativeAudio?.setJournalMode){
