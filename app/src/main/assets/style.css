@@ -1064,3 +1064,17 @@ body.theme-dark .board-media-tile{background:#242424;border-color:#aa925d}
 /* THE ENGINE: invisible hold zone over the right-side Conditions emblem */
 .engine-trigger{position:absolute;z-index:50;left:72%;top:73%;width:23%;height:17%;padding:0;border:0;border-radius:50%;background:transparent;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;}
 .engine-trigger.engine-active{outline:2px solid #d4af6380;outline-offset:3px;box-shadow:0 0 20px #e8b85e77;}
+
+/* Cover-only music selector; equalizer is animated only while playback is enabled */
+.music-widget{position:absolute;z-index:8;top:max(14px,env(safe-area-inset-top));left:6%;right:22%;height:44px;display:flex;align-items:center;gap:9px;max-width:420px}
+.song-next{min-width:0;flex:1;text-align:left;background:transparent;border:0;padding:2px 0;color:#171b20;display:flex;flex-direction:column;gap:4px}
+.song-next small{font:800 9px Arial,sans-serif;letter-spacing:1px;color:#9b8a6b}
+.song-next strong{font:800 13px/1.2 Arial,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.song-equalizer{display:flex;gap:3px;align-items:center;height:33px;flex:0 0 auto}
+.song-equalizer i{display:block;width:3px;height:6px;background:#ad9270;border-radius:3px;animation:inmotionEq .9s ease-in-out infinite alternate}
+.song-equalizer i:nth-child(3n){animation-duration:.57s}.song-equalizer i:nth-child(2n){animation-delay:-.4s;animation-duration:1.1s}
+@keyframes inmotionEq{from{height:5px}to{height:29px}}
+.music-widget.paused .song-equalizer i{animation-play-state:paused;height:5px}
+#song-import{flex:0 0 auto;font:800 18px Arial,sans-serif;width:29px;height:29px;border-radius:50%;border:1px solid #bca278;background:#ffffffda;color:#987644}
+body.theme-dark .song-next{color:#f6ebd9}
+@media(max-width:390px){.music-widget{right:24%;left:5%}.song-equalizer{gap:2px}.song-equalizer i{width:2px}}
