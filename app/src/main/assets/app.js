@@ -10,6 +10,15 @@ const SECTIONS = [
   {name:"CLUTCHES / SENKROMEÇ BİLEZİKLERİ", x:46.2,y:77,w:47.7,h:17.3,bottom:true,bottomRight:true}
 ];
 const Q = id => document.getElementById(id);
+function nextCoverSong(){try{window.NativeAudio?.nextSong();}catch(e){toast('Music control unavailable');}}
+function importCoverSongs(){try{window.NativeAudio?.importSongs();}catch(e){toast('Music import unavailable');}}
+window.onInMotionSongChanged=function(name,count){
+ const title=document.getElementById('song-title');
+ if(title)title.textContent=String(name||'Beneath the Mask - Instrumental');
+ const widget=document.querySelector('.music-widget');
+ if(widget)widget.classList.toggle('paused',typeof window.NativeAudio?.isMuted==='function'&&window.NativeAudio.isMuted());
+};
+
 const STATE_KEY = 'inmotion-v2';
 const nativeAvailable = !!window.NativeAudio;
 const covers = {cover:Q('cover-page'),board:Q('board-page')};
@@ -1410,6 +1419,7 @@ if(!nativeAvailable&&!isMuted()){
  Q('web-audio').play().catch(()=>{});
  document.addEventListener('pointerdown',()=>{if(!isMuted()&&Q('web-audio').paused)Q('web-audio').play().catch(()=>{});},{passive:true});
 }
+if(nativeAvailable&&typeof window.NativeAudio.getSongInfo==='function'){try{window.onInMotionSongChanged(window.NativeAudio.getSongInfo(),1);}catch(e){}}
 renderSlots();updateDate();updateXP();applyTheme();prepareAmbient();persist();renderStopwatch();
 setInterval(()=>{if(stopwatch.running&&!document.hidden)renderStopwatch();},800);
 if(state.lockdownActive)setLockdownView(true);else syncCoverVideo();
