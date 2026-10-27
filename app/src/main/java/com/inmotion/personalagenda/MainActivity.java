@@ -86,6 +86,66 @@ public class MainActivity extends Activity {
         engineHandler.postDelayed(engineTimeout,12000);
     }
     private MediaPlayer music;
+    private static final int MUSIC_PICKER_REQUEST=7307;
+    private final ArrayList<String> playlistFiles=new ArrayList<>();
+    private final ArrayList<String> playlistTitles=new ArrayList<>();
+    private int musicIndex=-1;
+    private String lastSongTitle="Beneath the Mask - Instrumental";
+    private File userMusicFolder(){File d=new File(getFilesDir(),"music_library");if(!d.exists())d.mkdirs();return d;}
+    private void collectPlaylist(){
+        playlistFiles.clear();playlistTitles.clear();
+        playlistFiles.add("asset:beneath_the_mask_instrumental.mp3");
+        playlistTitles.add("Beneath the Mask - Instrumental");
+        File[] imported=userMusicFolder().listFiles((dir,name)->name.endsWith(".mp3"));
+        if(imported!=null){
+            java.util.Arrays.sort(imported,(a,b)->a.getName().compareToIgnoreCase(b.getName()));
+            for(File file:imported){playlistFiles.add(file.getAbsolutePath());playlistTitles.add(file.getName().replace(".mp3","").replace('_',' '));}
+        }
+    }
+    private void notifySong(){
+        if(webView!=null)webView.evaluateJavascript("window.onInMotionSongChanged("+JSONObject.quote(lastSongTitle)+","+playlistFiles.size()+")",null);
+    }
+    private void playSong(int index){
+        collectPlaylist();
+        if(playlistFiles.isEmpty())return;
+        index=Math.floorMod(index,playlistFiles.size());
+        if(music!=null){try{music.stop();}catch(Exception ignored){}music.release();music=null;}
+        String filename=playlistFiles.get(index);
+        try{
+            MediaPlayer next=new MediaPlayer();
+            if(filename.startsWith("asset:")){
+                AssetFileDescriptor afd;
+                try{afd=getAssets().openFd(filename.substring(6));}
+                catch(Exception missing){afd=getAssets().openFd("beneath_the_mask.mp3");}
+                next.setDataSource(afd.getFileDescriptor(),afd.getStartOffset(),afd.getLength());afd.close();
+            }else next.setDataSource(filename);
+            next.setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build());
+            next.setLooping(true);next.prepare();
+            music=next;musicIndex=index;lastSongTitle=playlistTitles.get(index);
+            syncPlayback();notifySong();
+        }catch(Exception e){Log.w("IN_MOTION","Unable to load song "+filename,e);if(index!=0)playSong(0);}
+    }
+    private void changeSong(){
+        collectPlaylist();
+        if(playlistFiles.size()<2){notifySong();return;}
+        playSong((musicIndex+1)%playlistFiles.size());
+    }
+    private void importSong(Uri uri){
+        String name=originalDisplayName(uri);
+        if(!name.toLowerCase(Locale.ROOT).endsWith(".mp3"))return;
+        String clean=name.replaceAll("[^a-zA-Z0-9._ -]","_");
+        if(clean.length()>90)clean=clean.substring(clean.length()-90);
+        File dest=new File(userMusicFolder(),clean);
+        try(InputStream in=getContentResolver().openInputStream(uri);OutputStream out=new FileOutputStream(dest)){
+            if(in==null)return;
+            byte[] bytes=new byte[32768];int n;long total=0;
+            while((n=in.read(bytes))!=-1){
+                total+=n;if(total>45L*1024*1024)throw new IllegalStateException("Audio too large");
+                out.write(bytes,0,n);
+            }
+        }catch(Exception e){dest.delete();Log.w("IN_MOTION","Music import failed",e);}
+    }
+
     private SoundPool soundPool;
     private int selectSoundId = 0;
     private volatile boolean selectLoaded = false;
@@ -191,17 +251,8 @@ public class MainActivity extends Activity {
         webView.addJavascriptInterface(new AudioBridge(), "NativeAudio");
         setContentView(webView);
         webView.loadUrl("file:///android_asset/index.html");
-        try {
-            // New instrumental track; old track remains a fallback until assets are uploaded.
-            AssetFileDescriptor afd;
-            try { afd = getAssets().openFd("beneath_the_mask_instrumental.mp3"); }
-            catch (Exception missing) { afd = getAssets().openFd("beneath_the_mask.mp3"); }
-            music = new MediaPlayer();
-            music.setDataSource(afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength());
-            afd.close();
-            music.setLooping(true);
-            music.prepare();
-        } catch (Exception e) { Log.e("IN_MOTION", "Background music unavailable", e); }
+        collectPlaylist();
+        playSong(new java.util.Random().nextInt(Math.max(1,playlistFiles.size())));
 
         try {
             AssetFileDescriptor guardian = getAssets().openFd("guardians_lockdown.mp3");
@@ -638,6 +689,10 @@ public class MainActivity extends Activity {
     }
 
     public class AudioBridge {
+        @JavascriptInterface public String getSongInfo(){return lastSongTitle;}
+        @JavascriptInterface public void nextSong(){runOnUiThread(()->changeSong());}
+        @JavascriptInterface public void importSongs(){runOnUiThread(()->{Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("audio/mpeg");i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true);try{startActivityForResult(i,MUSIC_PICKER_REQUEST);}catch(Exception e){Log.w("IN_MOTION","Audio picker unavailable",e);}});}
+
         @JavascriptInterface public void startEngine(){runOnUiThread(()->MainActivity.this.startEngine());}
         @JavascriptInterface public void stopEngine(){runOnUiThread(()->MainActivity.this.stopEngine());}
 
@@ -918,6 +973,14 @@ public class MainActivity extends Activity {
     @SuppressWarnings("deprecation")
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if(requestCode==MUSIC_PICKER_REQUEST){
+            if(resultCode!=Activity.RESULT_OK||data==null)return;
+            final ArrayList<Uri> songs=new ArrayList<>();
+            if(data.getClipData()!=null){ClipData clips=data.getClipData();for(int i=0;i<Math.min(20,clips.getItemCount());i++)songs.add(clips.getItemAt(i).getUri());}
+            else if(data.getData()!=null)songs.add(data.getData());
+            new Thread(()->{for(Uri uri:songs)importSong(uri);runOnUiThread(()->{collectPlaylist();playSong(new java.util.Random().nextInt(playlistFiles.size()));});},"music-import").start();
+            return;
+        }
         if(requestCode==MEDIA_PICKER_REQUEST){
             if(resultCode!=Activity.RESULT_OK||data==null)return;
             final String date=pendingMediaDate,category=pendingMediaCategory,kind=pendingMediaKind;
