@@ -157,6 +157,8 @@ public class MainActivity extends Activity {
 
     private SoundPool soundPool;
     private int selectSoundId = 0;
+    private int workTransitionSoundId = 0;
+    private volatile boolean workTransitionLoaded = false;
     private volatile boolean selectLoaded = false;
     private SharedPreferences preferences;
     private boolean isResumed = false;
@@ -168,6 +170,7 @@ public class MainActivity extends Activity {
     private String journalMode = "";
     private static final int WORK_PHOTO_PICKER_REQUEST = 7302;
     private static final int PROGRAM_PICKER_REQUEST = 7303;
+    private static final int STATUS_QUO_PICKER_REQUEST = 7315;
     private static final int MEDIA_PICKER_REQUEST = 7304;
     private static final long MAX_VIDEO_BYTES = 150L * 1024 * 1024;
     private static final long MAX_MEDIA_TOTAL_BYTES = 750L * 1024 * 1024;
@@ -290,7 +293,8 @@ public class MainActivity extends Activity {
             if(lockdownMusic!=null){lockdownMusic.release(); lockdownMusic=null;}
         }
 
-        workMusic=loadJournalSong("work_screen.mp3");
+        workMusic=loadJournalSong("work_screen_new.mp3");
+        if(workMusic==null)workMusic=loadJournalSong("work_screen.mp3");
         eeMusic=loadJournalSong("ee_theme.mp3");
         studyMusic=loadJournalSong("study_theme.mp3");
 
@@ -298,7 +302,8 @@ public class MainActivity extends Activity {
             .setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA)
                 .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build()).build();
         soundPool.setOnLoadCompleteListener((pool, sampleId, status) -> {
-            if (sampleId > 0 && status == 0) selectLoaded = true;
+            if (sampleId==selectSoundId && status==0) selectLoaded=true;
+            if (sampleId==workTransitionSoundId && status==0) workTransitionLoaded=true;
             if (status != 0) Log.w("IN_MOTION", "Selection sound load error: " + status);
         });
         try {
@@ -308,6 +313,10 @@ public class MainActivity extends Activity {
             selectSoundId = soundPool.load(effect, 1);
             effect.close();
         } catch (Exception e) { Log.w("IN_MOTION", "Selection audio could not be loaded", e); }
+        try(AssetFileDescriptor fx=getAssets().openFd("work_transition.wav")){
+            workTransitionSoundId=soundPool.load(fx,1);
+        }catch(Exception e){Log.i("IN_MOTION","Optional Work transition SFX not installed yet");}
+
     }
 
     private void setEveningMode(boolean enabled){
@@ -420,6 +429,41 @@ public class MainActivity extends Activity {
             return target.exists()&&target.length()>0;
         }catch(Exception e){Log.w("IN_MOTION","Failed to save custom E,E program",e);return false;}
         finally{if(bitmap!=null&&!bitmap.isRecycled())bitmap.recycle();}
+    }
+
+    private File statusQuoImageFile(){return new File(getFilesDir(),"work_status_quo.jpg");}
+    private boolean writeStatusQuoImage(Uri uri){
+        File temp=new File(getFilesDir(),"work_status_quo_tmp.jpg");
+        Bitmap bitmap=null;
+        try(InputStream input=getContentResolver().openInputStream(uri)){
+            if(input==null)return false;
+            BitmapFactory.Options opts=new BitmapFactory.Options();opts.inSampleSize=2;
+            bitmap=BitmapFactory.decodeStream(input,null,opts);
+            if(bitmap==null)return false;
+            int w=bitmap.getWidth(),h=bitmap.getHeight();
+            if(Math.max(w,h)>1600){
+                float ratio=1600f/Math.max(w,h);
+                Bitmap small=Bitmap.createScaledBitmap(bitmap,Math.max(1,(int)(w*ratio)),Math.max(1,(int)(h*ratio)),true);
+                bitmap.recycle();bitmap=small;
+            }
+            try(OutputStream out=new FileOutputStream(temp)){if(!bitmap.compress(Bitmap.CompressFormat.JPEG,80,out))return false;}
+            if(temp.length()<=0||temp.length()>2800000)return false;
+            File target=statusQuoImageFile();
+            if(target.exists()&&!target.delete())return false;
+            return temp.renameTo(target);
+        }catch(Exception e){Log.w("IN_MOTION","Status Quo image save failed",e);return false;}
+        finally{if(bitmap!=null&&!bitmap.isRecycled())bitmap.recycle();temp.delete();}
+    }
+    private String statusQuoImageData(){
+        File file=statusQuoImageFile();if(!file.isFile()||file.length()>2800000)return "";
+        try(FileInputStream input=new FileInputStream(file)){
+            byte[] bytes=new byte[(int)file.length()];int read=0;
+            while(read<bytes.length){int n=input.read(bytes,read,bytes.length-read);if(n<=0)return "";read+=n;}
+            return "data:image/jpeg;base64,"+Base64.encodeToString(bytes,Base64.NO_WRAP);
+        }catch(Exception e){return "";}
+    }
+    private void notifyStatusQuo(boolean saved){
+        if(webView!=null)webView.evaluateJavascript("window.onStatusQuoImageChanged("+saved+")",null);
     }
     private void notifyProgramImage(boolean ok) {
         if(webView!=null)webView.evaluateJavascript("window.onProgramImageChanged("+ok+")",null);
@@ -768,6 +812,19 @@ public class MainActivity extends Activity {
         }).start();
     }
     public class AudioBridge {
+        @JavascriptInterface public void playWorkTransition(){
+            runOnUiThread(()->{if(soundPool!=null&&workTransitionLoaded&&workTransitionSoundId>0)
+                soundPool.play(workTransitionSoundId,1f,1f,2,0,1f);});
+        }
+        @JavascriptInterface public void pickStatusQuoImage(){
+            runOnUiThread(()->{
+                Intent intent=new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                intent.setType("image/*");intent.addCategory(Intent.CATEGORY_OPENABLE);
+                try{startActivityForResult(intent,STATUS_QUO_PICKER_REQUEST);}catch(Exception e){notifyStatusQuo(false);}
+            });
+        }
+        @JavascriptInterface public String getStatusQuoImageData(){return statusQuoImageData();}
+
         @JavascriptInterface public void revealBoot(){runOnUiThread(()->revealAnimatedBoot());}
 
         @JavascriptInterface public void finishBoot(){runOnUiThread(()->{bootSequenceActive=false;revealAnimatedBoot();if(bootSound!=null){try{if(bootSound.isPlaying())bootSound.stop();}catch(Exception ignored){}bootSound.release();bootSound=null;}syncPlayback();});}
@@ -1115,6 +1172,12 @@ public class MainActivity extends Activity {
                 runOnUiThread(()->notifyMediaSaved(message));
             },"inmotion-media-import").start();
             return;
+        }
+        if(requestCode==STATUS_QUO_PICKER_REQUEST){
+            if(resultCode==Activity.RESULT_OK&&data!=null&&data.getData()!=null){
+                final Uri uri=data.getData();
+                new Thread(()->{boolean saved=writeStatusQuoImage(uri);runOnUiThread(()->notifyStatusQuo(saved));},"status-quo-save").start();
+            }return;
         }
         if(requestCode==PROGRAM_PICKER_REQUEST){
             if(resultCode!=Activity.RESULT_OK||data==null||data.getData()==null)return;
