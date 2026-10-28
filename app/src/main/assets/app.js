@@ -1372,19 +1372,20 @@ function saveEvening(){try{localStorage.setItem(EVENING_KEY,JSON.stringify(eveni
 function renderEvening(){
  const now=new Date(),date=eveningDate(),hour=now.getHours(),minutes=now.getMinutes();
  const days=eveningEntries[date]||(eveningEntries[date]={});
- const liveDay=date===todayKey();
+ const liveDay=date===todayKey(),pastDay=date<todayKey(),futureDay=date>todayKey();
  mediaReload();
  const holder=Q('evening-slots');
  const currentScroll=holder.scrollTop;
  holder.textContent='';
- Q('evening-current-time').textContent=now.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})+' · '+date;
+ Q('evening-current-time').textContent=new Intl.DateTimeFormat('tr-TR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(new Date(date+'T12:00:00')).toLocaleUpperCase('tr-TR')+(liveDay?' · '+now.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'}):'');
  const remaining=liveDay?Math.max(0,1440-(hour*60+minutes)):0;
- Q('evening-remaining').textContent=liveDay?Math.floor(remaining/60)+' SAAT '+(remaining%60)+' DAKİKA':'GEÇMİŞ GÜN KAYITLARI';
+ Q('evening-remaining').textContent=liveDay?Math.floor(remaining/60)+' SAAT '+(remaining%60)+' DAKİKA':pastDay?'GEÇMİŞ GÜN KAYITLARI':'GELECEK GÜN PLANI';
  const savedHours=new Set(Object.keys(days).filter(k=>{const d=days[k];return d&&(d.title||d.note||d.next||d.complete||d.expanded);}).map(Number));
  for(const entry of allMediaEntries)if(entry?.date===date&&/^hour-\\d{4}-\\d{2}-\\d{2}-\\d{2}$/.test(entry.category||''))savedHours.add(Number(entry.category.slice(-2)));
+ const description=Q('evening-description');if(description)description.textContent=liveDay?'Şu anki saat aydınlatıldı. Gününü bilinçli yönet.':pastDay?'Geçmiş günün planları ve kayıtları.':'Gelecek gün için saatlik hazırlık ve planlama.';
  const showAll=Q('evening-show-all');if(showAll)showAll.textContent=eveningShowAll?'SAATLERİ DARALT':'TÜM 24 SAATİ GÖSTER';
  for(let h=0;h<24;h++){
-  if(!eveningShowAll&&liveDay&&Math.abs(h-hour)>3&&!savedHours.has(h))continue;
+  if(!eveningShowAll&&!(liveDay?Math.abs(h-hour)<=3:futureDay?h>=8&&h<=22: false)&&!savedHours.has(h))continue;
   const data=days[h]||{};
   const row=document.createElement('section');row.className='evening-slot'+(liveDay&&h===hour?' evening-now':'')+(liveDay&&h<hour?' evening-past':'');row.dataset.hour=String(h);
   const label=document.createElement('span');label.className='evening-time';label.textContent=String(h).padStart(2,'0')+':00';
