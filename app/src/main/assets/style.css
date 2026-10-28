@@ -1222,3 +1222,16 @@ body.theme-dark .song-next{color:#f6ebd9}
 @keyframes bootStatus{0%{opacity:0;letter-spacing:4px}27%{opacity:1}78%{opacity:1}100%{opacity:0}}
 @keyframes bootExit{0%{opacity:1;filter:brightness(1)}55%{opacity:1;filter:brightness(1.85)}100%{opacity:0;filter:brightness(2.4)}}
 @media(prefers-reduced-motion:reduce){.boot-sequence img,.boot-light,.boot-status{animation:none}.boot-sequence.boot-out{animation:bootExit .4s ease forwards}}
+
+/* Smooth, lightweight launch and living golden-current-hour pulse */
+#evening-page .evening-slot.evening-now{position:relative;animation:hourSoftPulse 2.9s ease-in-out infinite!important;will-change:box-shadow}
+@keyframes hourSoftPulse{
+  0%,100%{box-shadow:0 0 0 1px #eac88d,0 0 13px 3px #f4bd6f70,0 0 21px 5px #ffc76f3d}
+  50%{box-shadow:0 0 0 2px #ffdc9b,0 0 22px 7px #f4bd6fc9,0 0 33px 11px #ffc76f76}
+}
+.boot-sequence img{animation:bootDriftLite 3.1s ease-out both;will-change:transform}
+.boot-light{animation:bootSweepLite 2.4s ease-in-out .18s both;will-change:transform,opacity}
+.boot-sequence.boot-out{animation:bootExitLite .55s ease-out forwards!important}
+@keyframes bootDriftLite{from{transform:scale(1.045)}to{transform:scale(1)}}
+@keyframes bootSweepLite{0%{transform:translate3d(-90%,0,0);opacity:0}25%{opacity:.75}100%{transform:translate3d(90%,0,0);opacity:0}}
+@keyframes bootExitLite{from{opacity:1}to{opacity:0}}
