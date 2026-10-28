@@ -1392,8 +1392,8 @@ function openEvening(){
  page='evening';eveningOpen=true;
  Q('evening-page').classList.remove('is-hidden');
  Q('cover-page').classList.add('is-hidden');
- Q('evening-background').style.backgroundImage='linear-gradient(160deg,#0b1733b0,#151021bb),url(file:///android_asset/evening_bg_1.jpg)';
- try{const n=window.NativeAudio?.getEveningBackgroundCount?.()||0;if(n>0)Q('evening-background').style.backgroundImage='linear-gradient(160deg,#0b173377,#151021a0),url("'+window.NativeAudio.getEveningBackground(1+Math.floor(Math.random()*n))+'")';}catch(e){}
+ const backgrounds=['evening_bg_1.jpg','evening_bg_2.jpg','evening_bg_3.jpg'];
+ Q('evening-background').style.backgroundImage='linear-gradient(160deg,#0b173377,#151021a0),url("'+backgrounds[Math.floor(Math.random()*backgrounds.length)]+'")';
  renderEvening();setTimeout(()=>{let a=Q('evening-slots').querySelector('.evening-now');if(a)a.scrollIntoView({block:'center'});},100);
  try{window.NativeAudio?.setEveningMode?.(true);}catch(e){}
  syncCoverVideo();
@@ -1410,7 +1410,7 @@ function importTeleportSound(){try{window.NativeAudio?.importTeleportSound?.();}
 function eveningTeleport(){
  if(page!=='cover')return;
  const transition=Q('evening-transition');
- try{const art=window.NativeAudio?.getTeleportArtwork?.();if(art)transition.style.backgroundImage='linear-gradient(180deg,#09162a26,#050a1b7a),url("'+art+'")';}catch(e){}
+ transition.style.backgroundImage='linear-gradient(180deg,#09162a26,#050a1b7a),url("teleport_art.jpg")';
  transition.classList.add('active');
  try{window.NativeAudio?.playTeleport?.();}catch(e){}
  setTimeout(()=>{openEvening();},400);
