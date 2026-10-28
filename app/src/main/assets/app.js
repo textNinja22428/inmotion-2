@@ -1405,9 +1405,12 @@ function closeEvening(){
  syncCoverVideo();
 }
 function importEveningAssets(){try{window.NativeAudio?.importEveningAssets?.();}catch(e){toast('Import unavailable');}}
+function importTeleportImage(){try{window.NativeAudio?.importTeleportImage?.();}catch(e){toast('Transition image import unavailable');}}
 function eveningTeleport(){
  if(page!=='cover')return;
- const transition=Q('evening-transition');transition.classList.add('active');
+ const transition=Q('evening-transition');
+ try{const art=window.NativeAudio?.getTeleportArtwork?.();if(art)transition.style.backgroundImage='linear-gradient(180deg,#09162a26,#050a1b7a),url("'+art+'")';}catch(e){}
+ transition.classList.add('active');
  try{window.NativeAudio?.playTeleport?.();}catch(e){}
  setTimeout(()=>{openEvening();},400);
  setTimeout(()=>transition.classList.remove('active'),950);
