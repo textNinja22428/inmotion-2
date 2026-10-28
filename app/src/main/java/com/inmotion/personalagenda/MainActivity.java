@@ -38,6 +38,7 @@ import android.view.Gravity;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.VideoView;
 import android.widget.MediaController;
 import android.widget.Toast;
@@ -86,6 +87,7 @@ public class MainActivity extends Activity {
         engineHandler.postDelayed(engineTimeout,12000);
     }
     private boolean bootSequenceActive=true;
+    private ImageView nativeBootImage;
     private MediaPlayer bootSound;
     private MediaPlayer music;
     private MediaPlayer eveningMusic;
@@ -247,7 +249,7 @@ public class MainActivity extends Activity {
         else engineVibrator=(Vibrator)getSystemService(VIBRATOR_SERVICE);
         aiSettings = getSharedPreferences("in_motion_private_ai", MODE_PRIVATE);
         webView = new WebView(this);
-        webView.setBackgroundColor(0xffffffff);
+        webView.setBackgroundColor(0xff081425);
         webView.getSettings().setJavaScriptEnabled(true);
         webView.getSettings().setDomStorageEnabled(true);
         webView.getSettings().setAllowFileAccess(true);
@@ -255,7 +257,19 @@ public class MainActivity extends Activity {
         webView.setWebViewClient(new WebViewClient());
         webView.setWebChromeClient(new WebChromeClient());
         webView.addJavascriptInterface(new AudioBridge(), "NativeAudio");
-        setContentView(webView);
+        FrameLayout root=new FrameLayout(this);
+        root.setBackgroundColor(0xff081425);
+        root.addView(webView,new FrameLayout.LayoutParams(-1,-1));
+        nativeBootImage=new ImageView(this);
+        nativeBootImage.setBackgroundColor(0xff081425);
+        nativeBootImage.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        try(InputStream stream=getAssets().open("boot_trunks.png")){
+            BitmapFactory.Options opt=new BitmapFactory.Options();
+            opt.inSampleSize=2;
+            nativeBootImage.setImageBitmap(BitmapFactory.decodeStream(stream,null,opt));
+        }catch(Exception e){Log.w("IN_MOTION","Startup artwork unavailable",e);}
+        root.addView(nativeBootImage,new FrameLayout.LayoutParams(-1,-1));
+        setContentView(root);
         webView.loadUrl("file:///android_asset/index.html");
         collectPlaylist();
         playSong(new java.util.Random().nextInt(Math.max(1,playlistFiles.size())));
@@ -744,7 +758,7 @@ public class MainActivity extends Activity {
     }
 
     public class AudioBridge {
-        @JavascriptInterface public void finishBoot(){runOnUiThread(()->{bootSequenceActive=false;if(bootSound!=null){try{if(bootSound.isPlaying())bootSound.stop();}catch(Exception ignored){}bootSound.release();bootSound=null;}syncPlayback();});}
+        @JavascriptInterface public void finishBoot(){runOnUiThread(()->{bootSequenceActive=false;if(nativeBootImage!=null){final ImageView boot=nativeBootImage;nativeBootImage=null;boot.animate().alpha(0f).setDuration(260).withEndAction(()->{android.view.ViewGroup parent=(android.view.ViewGroup)boot.getParent();if(parent!=null)parent.removeView(boot);}).start();}if(bootSound!=null){try{if(bootSound.isPlaying())bootSound.stop();}catch(Exception ignored){}bootSound.release();bootSound=null;}syncPlayback();});}
 
         @JavascriptInterface public void setEveningMode(boolean enabled){runOnUiThread(()->MainActivity.this.setEveningMode(enabled));}
         @JavascriptInterface public int getEveningBackgroundCount(){return eveningBackgroundCount();}
