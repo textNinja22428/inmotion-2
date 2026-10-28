@@ -85,6 +85,8 @@ public class MainActivity extends Activity {
         engineHandler.postDelayed(()->{if(generation==engineGeneration)setEngineStage(4);},6000);
         engineHandler.postDelayed(engineTimeout,12000);
     }
+    private boolean bootSequenceActive=true;
+    private MediaPlayer bootSound;
     private MediaPlayer music;
     private MediaPlayer eveningMusic;
     private boolean eveningMode=false;
@@ -257,6 +259,7 @@ public class MainActivity extends Activity {
         webView.loadUrl("file:///android_asset/index.html");
         collectPlaylist();
         playSong(new java.util.Random().nextInt(Math.max(1,playlistFiles.size())));
+        try{AssetFileDescriptor boot=getAssets().openFd("boot_system61.wav");bootSound=new MediaPlayer();bootSound.setDataSource(boot.getFileDescriptor(),boot.getStartOffset(),boot.getLength());boot.close();bootSound.prepare();bootSound.start();}catch(Exception e){Log.i("IN_MOTION","Boot sound asset not installed yet");}
 
         try {
             AssetFileDescriptor guardian = getAssets().openFd("guardians_lockdown.mp3");
@@ -342,7 +345,7 @@ public class MainActivity extends Activity {
     private void importEveningFile(Uri uri,int index){saveEveningJpeg(uri,new File(getFilesDir(),"evening_bg_"+index+".jpg"));}
     private void syncPlayback() {
         if (music == null) return;
-        boolean shouldPlay = isResumed && !lockdownActive && journalMode.isEmpty() && !speechPromptActive && !mediaViewerActive && !eveningMode && !preferences.getBoolean("muted", false);
+        boolean shouldPlay = isResumed && !lockdownActive && journalMode.isEmpty() && !speechPromptActive && !mediaViewerActive && !eveningMode && !bootSequenceActive && !preferences.getBoolean("muted", false);
         try {
             if (shouldPlay && !music.isPlaying()) music.start();
             else if (!shouldPlay && music.isPlaying()) music.pause();
@@ -741,6 +744,8 @@ public class MainActivity extends Activity {
     }
 
     public class AudioBridge {
+        @JavascriptInterface public void finishBoot(){runOnUiThread(()->{bootSequenceActive=false;if(bootSound!=null){try{if(bootSound.isPlaying())bootSound.stop();}catch(Exception ignored){}bootSound.release();bootSound=null;}syncPlayback();});}
+
         @JavascriptInterface public void setEveningMode(boolean enabled){runOnUiThread(()->MainActivity.this.setEveningMode(enabled));}
         @JavascriptInterface public int getEveningBackgroundCount(){return eveningBackgroundCount();}
         @JavascriptInterface public String getEveningBackground(int index){return eveningBackgroundData(index);}
@@ -1165,6 +1170,7 @@ public class MainActivity extends Activity {
         if(workMusic!=null){workMusic.release();workMusic=null;}
         if(eeMusic!=null){eeMusic.release();eeMusic=null;}
         if(studyMusic!=null){studyMusic.release();studyMusic=null;}
+        if(bootSound!=null){bootSound.release();bootSound=null;}
         if(eveningMusic!=null){eveningMusic.release();eveningMusic=null;}
         if (music != null) { music.release(); music = null; }
         if (soundPool != null) { soundPool.release(); soundPool = null; }
