@@ -1235,3 +1235,53 @@ body.theme-dark .song-next{color:#f6ebd9}
 @keyframes bootDriftLite{from{transform:scale(1.045)}to{transform:scale(1)}}
 @keyframes bootSweepLite{0%{transform:translate3d(-90%,0,0);opacity:0}25%{opacity:.75}100%{transform:translate3d(90%,0,0);opacity:0}}
 @keyframes bootExitLite{from{opacity:1}to{opacity:0}}
+
+/* IN MOTION: smaller centered Seal composition; preserve original touch target. */
+#cover-stage .seal-motion-video{
+  left:27.0%!important;top:81.92%!important;
+  width:46.0%!important;height:16.32%!important;
+}
+#cover-stage .seal-motion-image{
+  left:33.67%!important;top:83.45%!important;
+  width:32.26%!important;height:12.44%!important;
+}
+/* Board header date is the sole daily history entry point. */
+#board-page .board-log-trigger{
+ border:1px solid #d4b98191!important;border-radius:13px!important;
+ color:var(--ink);background:var(--glass);cursor:pointer;
+ display:flex;flex-direction:column;justify-content:center;align-items:center;
+ gap:3px;min-height:56px;padding:6px!important;
+}
+#board-page .board-log-trigger small{font:800 8px Arial,sans-serif;letter-spacing:.5px;color:var(--gold)}
+#board-page .board-log-trigger:active{border-color:var(--gold)!important;box-shadow:0 0 12px #c88e2a35}
+.log-date-row{display:flex;align-items:center;gap:9px;margin:7px 0 16px;padding:11px;background:#f4efe6;border-radius:12px}
+.log-date-row label{font:900 10px Arial,sans-serif;color:#a47d36;white-space:nowrap}
+.log-date-row input{min-width:0;flex:1;font:700 12px Arial,sans-serif;padding:10px 4px;border:1px solid #bca272;border-radius:8px;background:white;color:#242424}
+.log-date-row button{font:800 11px Arial,sans-serif;border:1px solid #bca272;border-radius:8px;background:white;color:#8b631f;padding:11px 8px}
+/* Cinematic Work entry using bundled artwork and short system selection sound. */
+.work-entry-transition{position:fixed;inset:0;z-index:320;opacity:0;visibility:hidden;pointer-events:none;overflow:hidden;background:#08112b}
+.work-entry-transition img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;transform:scale(1.06)}
+.work-entry-transition.work-entry-active{visibility:visible;animation:workEntryAppear 1.12s ease both}
+.work-entry-transition.work-entry-active img{animation:workEntryZoom 1.12s ease-out both}
+.work-entry-flare{position:absolute;inset:0;background:linear-gradient(108deg,transparent 35%,#ffffffa0 49%,transparent 59%);mix-blend-mode:screen;transform:translateX(-110%);opacity:.7}
+.work-entry-active .work-entry-flare{animation:workEntryFlash .85s ease-out both}
+@keyframes workEntryAppear{0%{opacity:0}15%{opacity:1}72%{opacity:1}100%{opacity:0}}
+@keyframes workEntryZoom{0%{transform:scale(1.06)}100%{transform:scale(1)}}
+@keyframes workEntryFlash{0%{transform:translateX(-110%);opacity:0}25%{opacity:.85}100%{transform:translateX(110%);opacity:0}}
+/* A single user-replaceable Status Quo photograph. */
+.status-quo-scroll{padding:22px 18px;display:flex;flex-direction:column;gap:20px}
+.status-quo-scroll>p{color:#cdbb9f;font:13px/1.6 Arial,sans-serif}
+.status-quo-frame{flex:0 0 auto;min-height:280px;display:flex;align-items:center;justify-content:center;background:#222a30;border:1px solid #bf9e6380;border-radius:15px;overflow:hidden;padding:9px}
+.status-quo-frame img{display:block;max-width:100%;width:100%;max-height:65dvh;height:auto;object-fit:contain;border-radius:9px}
+.status-quo-frame img[hidden]{display:none!important}
+.status-quo-frame p{color:#cbb893;font:600 14px Arial,sans-serif}
+/* Current hour spotlight: pulse the glow independently from its content. */
+#evening-page .evening-now:after{content:'';position:absolute;inset:-4px;border:2px solid #ffe1a7;border-radius:16px;pointer-events:none;animation:nowHaloPulse 2.8s ease-in-out infinite;z-index:0}
+@keyframes nowHaloPulse{0%,100%{opacity:.38;box-shadow:0 0 9px 2px #f5b6596e}50%{opacity:1;box-shadow:0 0 19px 7px #ffcf7fa1}}
+#evening-page .evening-stopwatch-top{min-height:96px}
+#evening-page .evening-watch{grid-column:1;display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:0}
+#evening-page .evening-watch small{font:800 9px Arial,sans-serif;letter-spacing:1.5px;color:#e7c386}
+#evening-page .evening-watch strong{font:800 clamp(20px,5.6vw,28px) Arial,sans-serif;letter-spacing:.4px;color:#fff5d8;text-shadow:0 0 9px #ffc47158;font-variant-numeric:tabular-nums}
+#evening-page .evening-watch-controls{display:flex;gap:8px}
+#evening-page .evening-watch-controls button{min-height:30px;padding:4px 12px;font:900 11px Arial,sans-serif;border:1px solid #f0c98f88;border-radius:8px;color:#fff0d2;background:#62462dbd}
+#evening-page .evening-watch-controls button:active{background:#946d3b}
