@@ -1142,3 +1142,21 @@ body.theme-dark .song-next{color:#f6ebd9}
 .evening-slot.evening-done{border-color:#8ccbb682}
 .evening-slot.evening-done .evening-time:after{content:' ✓';color:#8ddec1}
 .evening-time{font-size:13px;min-width:44px}
+
+/* Time Architecture corrective layout: checkbox must NEVER inherit the text-field width */
+#evening-page .evening-slot{width:100%;min-width:0;opacity:1}
+#evening-page .evening-slot.evening-past{opacity:.78}
+#evening-page .evening-slot-content{flex:1 1 0;min-width:0;width:100%}
+#evening-page .evening-slot-top{display:grid;grid-template-columns:minmax(0,1fr) 24px 38px;column-gap:9px;width:100%;align-items:center}
+#evening-page .evening-slot-top input:not([type=checkbox]){grid-column:1;min-width:0;width:100%;font-size:15px;display:block}
+#evening-page input.evening-complete{grid-column:2;width:21px!important;min-width:21px!important;max-width:21px!important;height:21px!important;min-height:21px!important;max-height:21px!important;margin:0;appearance:auto;-webkit-appearance:checkbox;display:block}
+#evening-page .evening-slot-toggle{grid-column:3;width:38px!important;min-width:38px;display:block;visibility:visible;opacity:1}
+#evening-page .evening-slot-details{min-width:0;width:100%}
+#evening-page .evening-slot-details input,#evening-page .evening-slot-details textarea{width:100%;min-width:0}
+#evening-page .evening-slot-details .media-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+#evening-page .evening-slot-details .media-tile{min-width:0}
+#evening-page .evening-transition{background-size:cover;background-position:center;background-repeat:no-repeat}
+.evening-transition{position:fixed!important;z-index:9999!important;background-size:cover!important;background-position:center!important;pointer-events:none;}
+.evening-transition>div{background:#0b102270;border-radius:12px;padding:10px 14px}
+.evening-transition.active{animation:eveningTransportClean 1.15s ease-in-out both}
+@keyframes eveningTransportClean{0%{opacity:0;filter:brightness(2);transform:scale(1.08)}18%{opacity:1;filter:brightness(1.5)}72%{opacity:1;filter:brightness(1)}100%{opacity:0;transform:scale(1.01)}}
