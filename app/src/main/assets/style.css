@@ -1160,3 +1160,8 @@ body.theme-dark .song-next{color:#f6ebd9}
 .evening-transition>div{background:#0b102270;border-radius:12px;padding:10px 14px}
 .evening-transition.active{animation:eveningTransportClean 1.15s ease-in-out both}
 @keyframes eveningTransportClean{0%{opacity:0;filter:brightness(2);transform:scale(1.08)}18%{opacity:1;filter:brightness(1.5)}72%{opacity:1;filter:brightness(1)}100%{opacity:0;transform:scale(1.01)}}
+
+.evening-date-nav{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.evening-date-nav label{display:flex;align-items:center;gap:10px;flex:1;min-width:0;font:800 10px Arial,sans-serif;color:#f1ce90;letter-spacing:.6px}
+.evening-date-nav input{width:100%;min-width:0;min-height:43px;padding:7px 8px;color:#f9e2b8;background:#253147d9;border:1px solid #c5a47988;border-radius:8px;color-scheme:dark;font:600 13px Arial,sans-serif}
+.evening-date-nav button{flex:none;min-height:43px;border:1px solid #c5a47988;border-radius:8px;background:#263448cf;color:#f2d398;font:800 11px Arial,sans-serif;padding:0 12px}
