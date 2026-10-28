@@ -1361,6 +1361,8 @@ function completeLockdown(){
 
 /* Time Architecture: persistent hourly planner. */
 let eveningOpen=false,eveningClock=null;
+/* Transition must live outside the hidden evening page to show on the cover. */
+document.body.appendChild(Q('evening-transition'));
 const EVENING_KEY='inmotion_hourly_v1';
 let eveningEntries={};try{eveningEntries=JSON.parse(localStorage.getItem(EVENING_KEY)||'{}')||{};}catch(e){}
 function eveningDate(){return todayKey();}
