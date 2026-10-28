@@ -89,6 +89,7 @@ public class MainActivity extends Activity {
     private MediaPlayer eveningMusic;
     private boolean eveningMode=false;
     private static final int EVENING_ASSETS_REQUEST=7311;
+    private static final int TELEPORT_IMAGE_REQUEST=7312;
     private static final int MUSIC_PICKER_REQUEST=7307;
     private final ArrayList<String> playlistFiles=new ArrayList<>();
     private final ArrayList<String> playlistTitles=new ArrayList<>();
@@ -315,13 +316,26 @@ public class MainActivity extends Activity {
         }catch(Exception e){return "";}
     }
     private int eveningBackgroundCount(){int n=0;for(int i=1;i<=3;i++)if(new File(getFilesDir(),"evening_bg_"+i+".jpg").isFile())n++;return n;}
-    private void importEveningFile(Uri uri,int index){
-        File out=new File(getFilesDir(),"evening_bg_"+index+".jpg");
-        try(InputStream in=getContentResolver().openInputStream(uri);OutputStream o=new FileOutputStream(out)){
-            if(in==null)return;byte[] buf=new byte[32768];int n;long total=0;
-            while((n=in.read(buf))!=-1){total+=n;if(total>2800000)throw new IllegalStateException("Background too big");o.write(buf,0,n);}
-        }catch(Exception e){out.delete();Log.w("IN_MOTION","Background import failed",e);}
+    private String teleportArtworkData(){
+        File file=new File(getFilesDir(),"teleport_art.jpg");
+        if(!file.isFile()||file.length()>2800000)return "";
+        try(FileInputStream stream=new FileInputStream(file)){
+            byte[] bytes=new byte[(int)file.length()];int p=0;while(p<bytes.length){int n=stream.read(bytes,p,bytes.length-p);if(n<=0)return "";p+=n;}
+            return "data:image/jpeg;base64,"+Base64.encodeToString(bytes,Base64.NO_WRAP);
+        }catch(Exception e){return "";}
     }
+    private void saveEveningJpeg(Uri uri,File dest){
+        try(InputStream in=getContentResolver().openInputStream(uri)){
+            if(in==null)return;
+            Bitmap bitmap=BitmapFactory.decodeStream(in);
+            if(bitmap==null)return;
+            int width=bitmap.getWidth(),height=bitmap.getHeight();
+            if(width>1200){int scaledH=Math.max(1,(int)(height*1200.0/width));Bitmap smaller=Bitmap.createScaledBitmap(bitmap,1200,scaledH,true);bitmap.recycle();bitmap=smaller;}
+            try(OutputStream out=new FileOutputStream(dest)){bitmap.compress(Bitmap.CompressFormat.JPEG,84,out);}
+            bitmap.recycle();
+        }catch(Exception e){dest.delete();Log.w("IN_MOTION","Evening image conversion failed",e);}
+    }
+    private void importEveningFile(Uri uri,int index){saveEveningJpeg(uri,new File(getFilesDir(),"evening_bg_"+index+".jpg"));}
     private void syncPlayback() {
         if (music == null) return;
         boolean shouldPlay = isResumed && !lockdownActive && journalMode.isEmpty() && !speechPromptActive && !mediaViewerActive && !eveningMode && !preferences.getBoolean("muted", false);
@@ -727,6 +741,8 @@ public class MainActivity extends Activity {
         @JavascriptInterface public int getEveningBackgroundCount(){return eveningBackgroundCount();}
         @JavascriptInterface public String getEveningBackground(int index){return eveningBackgroundData(index);}
         @JavascriptInterface public void playTeleport(){runOnUiThread(()->{try{AssetFileDescriptor afd=getAssets().openFd("teleport.mp3");MediaPlayer fx=new MediaPlayer();fx.setDataSource(afd.getFileDescriptor(),afd.getStartOffset(),afd.getLength());afd.close();fx.setOnCompletionListener(p->{p.release();});fx.prepare();fx.start();}catch(Exception e){Log.i("IN_MOTION","Teleport audio asset not installed");}});}
+        @JavascriptInterface public String getTeleportArtwork(){return teleportArtworkData();}
+        @JavascriptInterface public void importTeleportImage(){runOnUiThread(()->{Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("image/*");try{startActivityForResult(i,TELEPORT_IMAGE_REQUEST);}catch(Exception e){Log.w("IN_MOTION","Transition image picker unavailable",e);}});}
         @JavascriptInterface public void importEveningAssets(){runOnUiThread(()->{Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("image/*");i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true);try{startActivityForResult(i,EVENING_ASSETS_REQUEST);}catch(Exception e){Log.w("IN_MOTION","Image picker unavailable",e);}});}
 
         @JavascriptInterface public String getSongInfo(){return lastSongTitle;}
@@ -1013,6 +1029,7 @@ public class MainActivity extends Activity {
     @SuppressWarnings("deprecation")
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if(requestCode==TELEPORT_IMAGE_REQUEST){if(resultCode==Activity.RESULT_OK&&data!=null&&data.getData()!=null){final Uri selected=data.getData();new Thread(()->{saveEveningJpeg(selected,new File(getFilesDir(),"teleport_art.jpg"));runOnUiThread(()->Toast.makeText(this,"Transition image saved",Toast.LENGTH_SHORT).show());},"transition-image").start();}return;}
         if(requestCode==EVENING_ASSETS_REQUEST){
             if(resultCode!=Activity.RESULT_OK||data==null)return;
             final ArrayList<Uri> picks=new ArrayList<>();
