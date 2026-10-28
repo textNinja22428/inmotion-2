@@ -298,11 +298,15 @@ public class MainActivity extends Activity {
         eveningMode=enabled;
         if(eveningMusic!=null){try{if(!enabled && eveningMusic.isPlaying())eveningMusic.pause();}catch(Exception ignored){}}
         if(enabled && eveningMusic==null){
-            File file=new File(userMusicFolder(),"Lookout Lounge.mp3");
-            if(!file.exists())file=new File(getFilesDir(),"evening_lookout.mp3");
-            if(file.isFile()){
-                try{eveningMusic=new MediaPlayer();eveningMusic.setDataSource(file.getAbsolutePath());eveningMusic.setLooping(true);eveningMusic.prepare();}
-                catch(Exception e){Log.w("IN_MOTION","Evening track unavailable",e);eveningMusic=null;}
+            eveningMusic=loadJournalSong("lookout_lounge.mp3");
+            if(eveningMusic==null){
+                File file=new File(userMusicFolder(),"Lookout Lounge.mp3");
+                if(!file.exists())file=new File(getFilesDir(),"evening_lookout.mp3");
+                if(file.isFile())try{
+                    eveningMusic=new MediaPlayer();
+                    eveningMusic.setDataSource(file.getAbsolutePath());
+                    eveningMusic.setLooping(true);eveningMusic.prepare();
+                }catch(Exception e){Log.w("IN_MOTION","Evening music unavailable",e);eveningMusic=null;}
             }
         }
         syncPlayback();
@@ -478,7 +482,7 @@ public class MainActivity extends Activity {
     }
     private boolean validMediaCategory(String category){
         if("work".equals(category)||"ee".equals(category)||"study".equals(category))return true;
-        return category!=null&&(category.matches("slot[0-7]")||category.matches("program[0-5]")||category.matches("project-[a-f0-9-]{36}"));
+        return category!=null&&(category.matches("slot[0-7]")||category.matches("program[0-5]")||category.matches("project-[a-f0-9-]{36}")||category.matches("hour-\\d{4}-\\d{2}-\\d{2}-[0-2][0-9]"));
     }
     private JSONArray mergedMedia() {
         JSONArray merged=new JSONArray();
