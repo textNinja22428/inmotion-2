@@ -1121,3 +1121,24 @@ body.theme-dark .song-next{color:#f6ebd9}
 .evening-transition{display:none;position:absolute;inset:0;z-index:60;background:linear-gradient(130deg,#121b39,#29518b 50%,#161537);align-items:center;justify-content:center;color:#ffcf85;text-align:center;font:800 22px Arial,sans-serif;letter-spacing:2px;text-shadow:0 0 18px #fcdb9f;}
 .evening-transition.active{display:flex;animation:eveningTransport .95s ease both;}
 @keyframes eveningTransport{0%{opacity:0;transform:scale(1.12)}25%{opacity:1}75%{opacity:1}100%{opacity:0;transform:scale(1)}}
+
+/* Extended Time Architecture hour journals */
+.evening-header{align-items:center}
+.evening-header h2{font-size:23px}
+.evening-slot{min-height:105px;padding:17px 13px;align-items:flex-start;transition:box-shadow .2s ease}
+.evening-slot-content{gap:12px}
+.evening-slot-top{display:flex;align-items:center;gap:10px;min-height:40px;width:100%}
+.evening-slot-top>input:not([type=checkbox]){flex:1;min-width:0;font-size:16px;font-weight:700}
+.evening-complete{width:20px;height:20px;flex-shrink:0;accent-color:#e7ba70}
+.evening-slot-toggle{min-width:35px;min-height:39px;border:1px solid #e1b47e85;border-radius:10px;font-size:22px}
+.evening-slot-details{display:flex;flex-direction:column;gap:11px;padding-top:14px;border-top:1px solid #c7ad8066}
+.evening-slot-details[hidden]{display:none!important}
+.evening-slot-details>input{padding:11px;border:1px solid #d3ae7a66;border-radius:9px;background:#161f32a0}
+.evening-slot-details textarea{min-height:122px;padding:12px;font-size:14px;line-height:1.5;border:1px solid #d3ae7a66;border-radius:9px;background:#141e30a0}
+.evening-slot-details button{min-height:38px;border:1px solid #e4bc7e86;background:#30415cd9;border-radius:9px;padding:8px 10px;color:#f6d9a8;font:800 11px Arial,sans-serif}
+.evening-attachments{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.evening-slot-details small{font:11px Arial,sans-serif;color:#d2bfa5}
+.evening-slot-details .media-grid{max-height:280px;overflow-y:auto}
+.evening-slot.evening-done{border-color:#8ccbb682}
+.evening-slot.evening-done .evening-time:after{content:' ✓';color:#8ddec1}
+.evening-time{font-size:13px;min-width:44px}
