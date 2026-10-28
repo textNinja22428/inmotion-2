@@ -239,8 +239,7 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                              WindowManager.LayoutParams.FLAG_FULLSCREEN);
-        getWindow().getDecorView().setSystemUiVisibility(
-            View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+        restoreImmersiveMode();
         preferences = getSharedPreferences("in_motion_settings", MODE_PRIVATE);
         if(Build.VERSION.SDK_INT>=31)engineVibrator=getSystemService(VibratorManager.class).getDefaultVibrator();
         else engineVibrator=(Vibrator)getSystemService(VIBRATOR_SERVICE);
@@ -1043,6 +1042,7 @@ public class MainActivity extends Activity {
     @SuppressWarnings("deprecation")
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        webView.postDelayed(this::restoreImmersiveMode,160);
         if(requestCode==TELEPORT_SOUND_REQUEST){
             if(resultCode==Activity.RESULT_OK&&data!=null&&data.getData()!=null){final Uri uri=data.getData();new Thread(()->{File dest=new File(getFilesDir(),"teleport.mp3");try(InputStream in=getContentResolver().openInputStream(uri);OutputStream out=new FileOutputStream(dest)){if(in==null)return;byte[] bytes=new byte[16384];long total=0;int n;while((n=in.read(bytes))!=-1){total+=n;if(total>12L*1024*1024)throw new IllegalStateException("Too large");out.write(bytes,0,n);}}catch(Exception e){dest.delete();Log.w("IN_MOTION","Teleport sound import failed",e);}},"teleport-sound").start();}
             return;
@@ -1132,8 +1132,18 @@ public class MainActivity extends Activity {
         webView.evaluateJavascript(script, null);
     }
 
-    @Override protected void onResume() {
-        super.onResume(); isResumed = true; syncPlayback();
+    private void restoreImmersiveMode(){
+        getWindow().getDecorView().setSystemUiVisibility(
+            View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
+            View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY | View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
+            View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
+    }
+    @Override public void onWindowFocusChanged(boolean hasFocus){
+        super.onWindowFocusChanged(hasFocus);
+        if(hasFocus)restoreImmersiveMode();
+    }
+        @Override protected void onResume() {
+        super.onResume(); isResumed = true; restoreImmersiveMode(); syncPlayback();
         syncLockdownMusic();syncWorkMusic();
         if(webView != null) webView.onResume();
     }
