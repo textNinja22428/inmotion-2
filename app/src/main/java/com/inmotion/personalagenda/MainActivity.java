@@ -90,6 +90,7 @@ public class MainActivity extends Activity {
     private boolean eveningMode=false;
     private static final int EVENING_ASSETS_REQUEST=7311;
     private static final int TELEPORT_IMAGE_REQUEST=7312;
+    private static final int TELEPORT_SOUND_REQUEST=7313;
     private static final int MUSIC_PICKER_REQUEST=7307;
     private final ArrayList<String> playlistFiles=new ArrayList<>();
     private final ArrayList<String> playlistTitles=new ArrayList<>();
@@ -740,9 +741,18 @@ public class MainActivity extends Activity {
         @JavascriptInterface public void setEveningMode(boolean enabled){runOnUiThread(()->MainActivity.this.setEveningMode(enabled));}
         @JavascriptInterface public int getEveningBackgroundCount(){return eveningBackgroundCount();}
         @JavascriptInterface public String getEveningBackground(int index){return eveningBackgroundData(index);}
-        @JavascriptInterface public void playTeleport(){runOnUiThread(()->{try{AssetFileDescriptor afd=getAssets().openFd("teleport.mp3");MediaPlayer fx=new MediaPlayer();fx.setDataSource(afd.getFileDescriptor(),afd.getStartOffset(),afd.getLength());afd.close();fx.setOnCompletionListener(p->{p.release();});fx.prepare();fx.start();}catch(Exception e){Log.i("IN_MOTION","Teleport audio asset not installed");}});}
+        @JavascriptInterface public void playTeleport(){runOnUiThread(()->{
+            try{
+                MediaPlayer fx=new MediaPlayer();
+                File local=new File(getFilesDir(),"teleport.mp3");
+                if(local.isFile())fx.setDataSource(local.getAbsolutePath());
+                else{AssetFileDescriptor afd=getAssets().openFd("teleport.mp3");fx.setDataSource(afd.getFileDescriptor(),afd.getStartOffset(),afd.getLength());afd.close();}
+                fx.setOnCompletionListener(p->{p.release();});fx.prepare();fx.start();
+            }catch(Exception e){Log.i("IN_MOTION","Teleport SFX must be imported");}
+        });}
         @JavascriptInterface public String getTeleportArtwork(){return teleportArtworkData();}
         @JavascriptInterface public void importTeleportImage(){runOnUiThread(()->{Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("image/*");try{startActivityForResult(i,TELEPORT_IMAGE_REQUEST);}catch(Exception e){Log.w("IN_MOTION","Transition image picker unavailable",e);}});}
+        @JavascriptInterface public void importTeleportSound(){runOnUiThread(()->{Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("audio/mpeg");try{startActivityForResult(i,TELEPORT_SOUND_REQUEST);}catch(Exception e){Log.w("IN_MOTION","Sound picker unavailable",e);}});}
         @JavascriptInterface public void importEveningAssets(){runOnUiThread(()->{Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("image/*");i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true);try{startActivityForResult(i,EVENING_ASSETS_REQUEST);}catch(Exception e){Log.w("IN_MOTION","Image picker unavailable",e);}});}
 
         @JavascriptInterface public String getSongInfo(){return lastSongTitle;}
@@ -1029,6 +1039,10 @@ public class MainActivity extends Activity {
     @SuppressWarnings("deprecation")
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if(requestCode==TELEPORT_SOUND_REQUEST){
+            if(resultCode==Activity.RESULT_OK&&data!=null&&data.getData()!=null){final Uri uri=data.getData();new Thread(()->{File dest=new File(getFilesDir(),"teleport.mp3");try(InputStream in=getContentResolver().openInputStream(uri);OutputStream out=new FileOutputStream(dest)){if(in==null)return;byte[] bytes=new byte[16384];long total=0;int n;while((n=in.read(bytes))!=-1){total+=n;if(total>12L*1024*1024)throw new IllegalStateException("Too large");out.write(bytes,0,n);}}catch(Exception e){dest.delete();Log.w("IN_MOTION","Teleport sound import failed",e);}},"teleport-sound").start();}
+            return;
+        }
         if(requestCode==TELEPORT_IMAGE_REQUEST){if(resultCode==Activity.RESULT_OK&&data!=null&&data.getData()!=null){final Uri selected=data.getData();new Thread(()->{saveEveningJpeg(selected,new File(getFilesDir(),"teleport_art.jpg"));runOnUiThread(()->Toast.makeText(this,"Transition image saved",Toast.LENGTH_SHORT).show());},"transition-image").start();}return;}
         if(requestCode==EVENING_ASSETS_REQUEST){
             if(resultCode!=Activity.RESULT_OK||data==null)return;
