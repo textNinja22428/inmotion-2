@@ -1089,3 +1089,35 @@ body.theme-dark .song-next{color:#f6ebd9}
 #cover-page .date-panel .time-greeting{margin-top:11px;max-width:250px;}
 #cover-page #date-long{display:none!important;}
 @media(max-width:360px){#cover-page .date-panel{right:17%}#cover-page .date-weekday{font-size:14px}}
+
+/* Conditions opens the daily timeline; Cycle remains the exclusive agenda entry. */
+.engine-trigger{left:72%;top:73%;width:23%;height:17%;box-shadow:none!important;outline:none!important;}
+.cycle-hotspot{position:absolute;z-index:51;left:6.5%;top:72%;width:24%;height:17%;border:0;background:transparent;border-radius:50%;touch-action:manipulation;}
+#evening-page{background:#0b152b;color:#ffefd0;z-index:3;}
+.evening-background{position:absolute;inset:0;background:linear-gradient(140deg,#091528dd,#191538aa),radial-gradient(circle at 60% 40%,#22487b,#071020);background-position:center;background-size:cover;filter:saturate(.92);}
+.evening-overlay{position:absolute;inset:0;background:linear-gradient(180deg,#060c19a8,#080d22b0 48%,#040918dc);pointer-events:none;}
+.evening-panel{position:absolute;inset:0;display:flex;flex-direction:column;padding:calc(22px + env(safe-area-inset-top)) 6% calc(14px + env(safe-area-inset-bottom));gap:14px;z-index:2;}
+.evening-header{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.evening-header small{color:#e4bd76;font:800 10px Arial,sans-serif;letter-spacing:1px;}
+.evening-header h2{margin:4px 0;font:700 25px Georgia,serif;color:#ffe3af;}
+.evening-back{flex:0 0 auto;font-size:34px;color:#e9c797;background:#ffffff15;border:1px solid #c6a36e77;border-radius:13px;width:43px;height:46px;}
+.evening-assets{margin-left:auto;font:700 10px Arial,sans-serif;background:#ffffff24;color:#ffdeb0;border:1px solid #d2b37788;border-radius:9px;padding:9px;max-width:100px;}
+.evening-summary{display:flex;flex-direction:column;background:#253046bb;backdrop-filter:blur(10px);border:1px solid #e2bb816b;border-radius:15px;padding:16px;gap:8px;flex-shrink:0;text-align:center;}
+.evening-summary small{color:#e0bd88;font:700 12px Arial,sans-serif;}
+.evening-summary strong{font:800 clamp(25px,6vw,35px) Arial,sans-serif;color:#ffda8c;text-shadow:0 0 14px #ffb94744;}
+.evening-summary span{font:12px Arial,sans-serif;color:#e5d4bb;}
+.evening-slots{overflow-y:auto;flex:1;min-height:0;padding:8px 5px 32px 10px;display:flex;flex-direction:column;gap:10px;scrollbar-width:thin;}
+.evening-slot{display:flex;gap:11px;align-items:flex-start;background:#29354bcb;border:1px solid #ad99765c;border-radius:13px;padding:12px 9px;min-height:74px;position:relative;}
+.evening-slot:before{content:'';position:absolute;left:-11px;top:28px;width:8px;height:8px;border-radius:50%;background:#b69777;}
+.evening-slot.evening-now{border-color:#ffcf85;box-shadow:0 0 0 1px #ffce7980,0 0 19px 4px #ffc16e9e,inset 0 0 16px #ffbd4b28;background:#493e41e8;}
+.evening-slot.evening-now:before{background:#fff2ae;box-shadow:0 0 0 5px #ffc36366,0 0 12px 3px #ffcc70;}
+.evening-slot.evening-past{opacity:.58;}
+.evening-time{font:800 12px Arial,sans-serif;color:#f1c28a;min-width:39px;padding-top:7px;}
+.evening-slot-content{display:flex;flex-direction:column;flex:1;min-width:0;gap:9px;}
+.evening-slot-content input,.evening-slot-content textarea{box-sizing:border-box;color:#fff3dc;background:transparent;border:0;width:100%;font:600 14px Arial,sans-serif;outline:none;resize:vertical;}
+.evening-slot-content textarea{font-weight:400;font-size:12px;border-top:1px solid #a6987977;padding-top:9px;}
+.evening-slot-content input::placeholder,.evening-slot-content textarea::placeholder{color:#d9c6af9c;}
+.evening-slot-toggle{font-size:22px;color:#e1b47e;border:0;background:transparent;flex-shrink:0;}
+.evening-transition{display:none;position:absolute;inset:0;z-index:60;background:linear-gradient(130deg,#121b39,#29518b 50%,#161537);align-items:center;justify-content:center;color:#ffcf85;text-align:center;font:800 22px Arial,sans-serif;letter-spacing:2px;text-shadow:0 0 18px #fcdb9f;}
+.evening-transition.active{display:flex;animation:eveningTransport .95s ease both;}
+@keyframes eveningTransport{0%{opacity:0;transform:scale(1.12)}25%{opacity:1}75%{opacity:1}100%{opacity:0;transform:scale(1)}}
