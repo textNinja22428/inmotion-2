@@ -87,7 +87,7 @@ function levelTitle(level){return ['FIRST SPARK','GETTING STARTED','IN MOTION','
 function updateXP(){
  const count=Object.keys(state.days).filter(k=>state.days[k].archived).length;
  Q('board-xp').textContent=`${day().done.filter(Boolean).length} / 8 COMPLETE`;
- Q('gallery-count').textContent=`${count} SAVED ${count===1?'DAY':'DAYS'}`;
+ const galleryCount=Q('gallery-count');if(galleryCount)galleryCount.textContent=`${count} SAVED ${count===1?'DAY':'DAYS'}`;
 }
 function prettyDate(key,options){
  const date=new Date(`${key}T12:00:00`);
@@ -209,19 +209,36 @@ function archiveToday(){
  d.snapshot={slots:[...d.slots],done:[...d.done],savedAt:d.savedAt};
  persist();updateXP();toast('Today saved to Gallery ✓');
 }
-function openGallery(){rollover();const list=Q('gallery-list');list.textContent='';
- const keys=Object.keys(state.days).filter(k=>state.days[k].archived).sort().reverse();
- if(!keys.length){const e=document.createElement('div');e.className='gallery-empty';e.textContent='No archived days yet. Tap “SAVE TODAY TO GALLERY” on the board to keep a snapshot.';list.append(e);}
- keys.forEach(k=>{const d=state.days[k].snapshot||state.days[k],b=document.createElement('button');b.className='gallery-item';
- const thumb=document.createElement('img');thumb.src='board.jpg';thumb.alt='';
- const body=document.createElement('span');body.className='gallery-item-body';
- const name=document.createElement('strong');name.textContent=prettyDate(k,{weekday:'long',day:'numeric',month:'short',year:'numeric'});
- const meta=document.createElement('small');meta.textContent=`${d.done.filter(Boolean).length}/8 completed · ${d.slots.filter(v=>v&&v.trim()).length} notes`;
- body.append(name,meta);b.append(thumb,body);b.addEventListener('click',()=>openHistory(k));list.append(b);
- });show('gallery-shade');
+/* Daily log is always saved in the existing date-keyed day store; no manual archive needed. */
+function openDayLog(){rollover();Q('log-date').value=state.activeDay;openGallery();}
+function openSelectedDayLog(){
+ const date=Q('log-date').value;
+ if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(date))return;
+ openHistory(date);
+}
+function openGallery(){
+ rollover();
+ const list=Q('gallery-list');list.textContent='';
+ Q('log-date').value=Q('log-date').value||todayKey();
+ const keys=Object.keys(state.days).filter(k=>{
+   const d=state.days[k];if(!d)return false;
+   const v=d.snapshot||d;
+   return k===todayKey()||d.archived||v.slots?.some(x=>x&&x.trim())||v.done?.some(Boolean);
+ }).sort().reverse();
+ if(!keys.length){const empty=document.createElement('div');empty.className='gallery-empty';empty.textContent='Henüz kaydedilmiş günlük bulunmuyor. Yukarıdan tarih seçebilirsin.';list.append(empty);}
+ keys.forEach(k=>{
+   const d=state.days[k].snapshot||state.days[k];
+   const b=document.createElement('button');b.type='button';b.className='gallery-item';
+   const thumb=document.createElement('img');thumb.src='board.jpg';thumb.alt='';
+   const body=document.createElement('span');body.className='gallery-item-body';
+   const name=document.createElement('strong');name.textContent=prettyDate(k,{weekday:'long',day:'numeric',month:'short',year:'numeric'});
+   const meta=document.createElement('small');meta.textContent=(d.done||[]).filter(Boolean).length+'/8 tamamlandı · '+(d.slots||[]).filter(x=>x&&x.trim()).length+' not';
+   body.append(name,meta);b.append(thumb,body);b.onclick=()=>openHistory(k);list.append(b);
+ });
+ show('gallery-shade');
 }
 function closeGallery(){hide('gallery-shade');}
-function openHistory(key){selectedArchive=key;const d=state.days[key].snapshot||state.days[key];Q('history-title').textContent=prettyDate(key,{day:'numeric',month:'long',year:'numeric'});Q('history-status').textContent=`${d.done.filter(Boolean).length} / 8 COMPLETE · ${d.slots.filter(x=>x&&x.trim()).length} NOTES`;
+function openHistory(key){selectedArchive=key;const record=state.days[key]||fresh();const d=record.snapshot||record;Q('history-title').textContent=prettyDate(key,{day:'numeric',month:'long',year:'numeric'});Q('history-status').textContent=`${d.done.filter(Boolean).length} / 8 COMPLETE · ${d.slots.filter(x=>x&&x.trim()).length} NOTES`;
  const layer=Q('history-slots');layer.textContent='';SECTIONS.forEach((s,i)=>{
  const v=document.createElement('div');v.className='history-slot'+(s.bottom?' history-bottom':'')+(s.bottomRight?' history-right':'');
  Object.assign(v.style,{left:s.x+'%',top:s.y+'%',width:s.w+'%',height:s.h+'%'});
@@ -509,6 +526,27 @@ function saveAppObject(key,value){
  catch(e){toast('Storage full — could not save');return false;}
 }
 function freshProjectId(){return 'project-'+[8,4,4,4,12].map(n=>Array.from({length:n},()=>Math.floor(Math.random()*16).toString(16)).join('')).join('-');}
+function refreshStatusQuoPhoto(){
+ const img=Q('status-quo-photo'),empty=Q('status-quo-empty');
+ let src='';
+ try{src=window.NativeAudio?.getStatusQuoImageData?.()||'';}catch(e){}
+ const available=src.startsWith('data:image/jpeg;base64,');
+ if(available){img.src=src;img.hidden=false;empty.hidden=true;}
+ else{img.removeAttribute('src');img.hidden=true;empty.hidden=false;}
+}
+function openStatusQuo(){
+ if(!workOpen||journalMode!=='work')return;
+ refreshStatusQuoPhoto();show('status-quo-shade');
+}
+function closeStatusQuo(){hide('status-quo-shade');Q('status-quo-photo').removeAttribute('src');}
+function replaceStatusQuoPhoto(){
+ if(!window.NativeAudio?.pickStatusQuoImage){toast('Android uygulamasında aç');return;}
+ try{window.NativeAudio.pickStatusQuoImage();}catch(e){toast('Fotoğraf seçici açılamadı');}
+}
+window.onStatusQuoImageChanged=ok=>{
+ if(ok)refreshStatusQuoPhoto();
+ toast(ok?'STATUS QUO fotoğrafı kaydedildi':'Fotoğraf kaydedilemedi');
+};
 function openProjectCategory(category){
  if(!projectGroups[category]||!workOpen||journalMode!=='work')return;
  projectGroup=category;
@@ -855,6 +893,17 @@ function openFocusJournal(mode){
  if(page!=='board'||state.lockdownActive||!JOURNAL_CONFIG[mode])return;
  openJournal(mode);
 }
+let workEntryPending=false;
+function startWorkTransition(){
+ if(page!=='cover'||workOpen||state.lockdownActive||workEntryPending)return;
+ workEntryPending=true;
+ const overlay=Q('work-entry-transition');
+ overlay.classList.remove('work-entry-active');void overlay.offsetWidth;
+ overlay.classList.add('work-entry-active');
+ try{window.NativeAudio?.playWorkTransition?.();}catch(e){}
+ setTimeout(()=>{if(page==='cover'&&!state.lockdownActive)openWorkJournal();},500);
+ setTimeout(()=>{overlay.classList.remove('work-entry-active');workEntryPending=false;},1120);
+}
 function openWorkJournal(){
  if(page!=='cover'||state.lockdownActive)return;
  openJournal('work');
@@ -882,7 +931,7 @@ function openJournal(mode){
 }
 function closeWorkJournal(){
  if(Q('project-detail-shade').classList.contains('open'))closeProjectDetail();
- closeProjectCategory();
+ closeProjectCategory();closeStatusQuo();
  closeProgram();closeWorkPhoto();workOpen=false;hide('work-shade');
  if(window.NativeAudio?.setJournalMode){
   try{window.NativeAudio.setJournalMode('');}catch(e){}
