@@ -1185,3 +1185,26 @@ body.theme-dark .song-next{color:#f6ebd9}
 #evening-page .evening-show-all{flex:0 0 auto;width:100%;min-height:38px;border:1px solid #c7ac7980;background:#22304bcf;color:#f2d2a3;border-radius:9px;font:800 11px Arial,sans-serif;letter-spacing:.55px}
 .evening-transition>div{display:none!important}
 .evening-transition{background-blend-mode:normal;background-size:cover!important;background-position:center!important}
+
+/* Time Architecture: glow clearance + consistent viewport after Android date picker. */
+#evening-page .evening-slots{
+  padding:28px 24px 46px 24px!important;
+  scroll-padding-top:32px;
+  scroll-padding-bottom:35px;
+  min-height:0;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  box-sizing:border-box;
+}
+#evening-page .evening-slot{
+  margin:0!important;
+  flex:none!important;
+  overflow:visible!important;
+  height:auto!important;
+}
+#evening-page .evening-slot.evening-now{
+  box-shadow:0 0 0 2px #ffd58b,0 0 15px 5px #f4bd6f99,0 0 24px 7px #ffc76f55!important;
+}
+#evening-page .evening-slot:before{left:-14px}
+#evening-page .evening-panel{height:100%;height:100dvh;overflow:hidden}
+#cover-page,#cover-stage{transform-origin:center center}
