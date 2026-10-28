@@ -160,14 +160,11 @@ if(sealVideo){
  sealVideo.addEventListener('error',()=>Q('cover-stage').classList.remove('has-seal-video'));
  sealVideo.addEventListener('loadeddata',()=>{if(page==='cover')syncCoverVideo();});
 }
-let lastTap=0,lastX=0,lastY=0;
-Q('cover-stage').addEventListener('pointerup',e=>{
- if(page!=='cover'||(e.pointerType==='mouse'&&e.button!==0))return;
- const now=Date.now(),dist=Math.hypot(e.clientX-lastX,e.clientY-lastY);
- if(now-lastTap<370&&dist<55){lastTap=0;enterBoard();e.preventDefault();e.stopPropagation();}
- else{lastTap=now;lastX=e.clientX;lastY=e.clientY;}
-});
-Q('cover-stage').addEventListener('dblclick',e=>{if(page==='cover'){enterBoard();e.preventDefault();e.stopPropagation();}});
+/* The agenda is opened only by the Cycle Ends Here emblem. */
+Q('cover-stage').addEventListener('dblclick',e=>{e.preventDefault();e.stopPropagation();});
+const cycleHotspot=document.createElement('button');cycleHotspot.type='button';cycleHotspot.className='cycle-hotspot';cycleHotspot.setAttribute('aria-label','Open MC CAB agenda');
+Q('cover-stage').append(cycleHotspot);
+cycleHotspot.addEventListener('click',e=>{e.stopPropagation();enterBoard();});
 function openEditor(index){if(page!=='board'||Date.now()<boardReadyAt)return;rollover();editingSlot=index;const d=day();
  Q('editor-title').textContent=SECTIONS[index].name;Q('editor-overline').textContent=`${state.activeDay} / SLOT ${index+1}`;
  Q('editor-input').value=d.slots[index]||'';Q('slot-complete').checked=!!d.done[index];
@@ -1361,32 +1358,62 @@ function completeLockdown(){
  Q('lockdown-instruction').textContent='Write at least one line to override. Your notes are stored on this device.';
  toast('Override complete. Seal intact.');
 }
-/* THE ENGINE — hold the Conditions emblem to ramp haptics.
-   Native Android haptics are cancelled on release and the Activity enforces a 12s cap. */
+
+/* Time Architecture: persistent hourly planner. */
+let eveningOpen=false,eveningClock=null;
+const EVENING_KEY='inmotion_hourly_v1';
+let eveningEntries={};try{eveningEntries=JSON.parse(localStorage.getItem(EVENING_KEY)||'{}')||{};}catch(e){}
+function eveningDate(){return todayKey();}
+function saveEvening(){try{localStorage.setItem(EVENING_KEY,JSON.stringify(eveningEntries));}catch(e){toast('Hourly planner storage full');}}
+function renderEvening(){
+ const now=new Date(),date=eveningDate(),hour=now.getHours(),minutes=now.getMinutes();
+ const days=eveningEntries[date]||(eveningEntries[date]={});
+ const holder=Q('evening-slots');holder.textContent='';
+ Q('evening-current-time').textContent=now.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})+' · '+date;
+ Q('evening-remaining').textContent=(23-hour)+' SAAT '+(60-minutes)%60+' DAKİKA';
+ for(let h=0;h<24;h++){
+  const row=document.createElement('div');row.className='evening-slot'+(h===hour?' evening-now':'')+(h<hour?' evening-past':'');row.dataset.hour=String(h);
+  const label=document.createElement('span');label.className='evening-time';label.textContent=String(h).padStart(2,'0')+':00';
+  const info=document.createElement('div');info.className='evening-slot-content';
+  const name=document.createElement('input');name.placeholder='Bu saat için planın...';name.value=String(days[h]?.title||'');name.maxLength=140;name.setAttribute('aria-label',label.textContent+' activity');
+  const note=document.createElement('textarea');note.placeholder='Notlar / sonraki somut adım';note.value=String(days[h]?.note||'');note.rows=2;note.maxLength=2500;note.hidden=!days[h]?.expanded;
+  const toggle=document.createElement('button');toggle.type='button';toggle.className='evening-slot-toggle';toggle.textContent=note.hidden?'+':'−';
+  toggle.onclick=()=>{note.hidden=!note.hidden;toggle.textContent=note.hidden?'+':'−';if(!days[h])days[h]={};days[h].expanded=!note.hidden;saveEvening();};
+  const save=()=>{if(!days[h])days[h]={};days[h].title=name.value;days[h].note=note.value;saveEvening();};
+  name.addEventListener('input',save);note.addEventListener('input',save);
+  info.append(name,note);row.append(label,info,toggle);holder.append(row);
+ }
+ const active=holder.querySelector('.evening-now');if(active)active.scrollIntoView({block:'center'});
+}
+function openEvening(){
+ if(page!=='cover'||state.lockdownActive)return;
+ page='evening';eveningOpen=true;
+ Q('evening-page').classList.remove('is-hidden');
+ Q('cover-page').classList.add('is-hidden');
+ Q('evening-background').style.backgroundImage='linear-gradient(160deg,#0b1733b0,#151021bb),url(file:///android_asset/evening_bg_1.jpg)';
+ try{const n=window.NativeAudio?.getEveningBackgroundCount?.()||0;if(n>0)Q('evening-background').style.backgroundImage='linear-gradient(160deg,#0b173377,#151021a0),url("'+window.NativeAudio.getEveningBackground(1+Math.floor(Math.random()*n))+'")';}catch(e){}
+ renderEvening();setTimeout(()=>{let a=Q('evening-slots').querySelector('.evening-now');if(a)a.scrollIntoView({block:'center'});},100);
+ try{window.NativeAudio?.setEveningMode?.(true);}catch(e){}
+ syncCoverVideo();
+}
+function closeEvening(){
+ if(!eveningOpen)return;eveningOpen=false;page='cover';
+ Q('evening-page').classList.add('is-hidden');Q('cover-page').classList.remove('is-hidden');
+ try{window.NativeAudio?.setEveningMode?.(false);}catch(e){}
+ syncCoverVideo();
+}
+function importEveningAssets(){try{window.NativeAudio?.importEveningAssets?.();}catch(e){toast('Import unavailable');}}
+function eveningTeleport(){
+ if(page!=='cover')return;
+ const transition=Q('evening-transition');transition.classList.add('active');
+ try{window.NativeAudio?.playTeleport?.();}catch(e){}
+ setTimeout(()=>{openEvening();},400);
+ setTimeout(()=>transition.classList.remove('active'),950);
+}
+setInterval(()=>{if(eveningOpen){const now=new Date();Q('evening-current-time').textContent=now.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})+' · '+eveningDate();if(now.getMinutes()===0)renderEvening();}},60000);
+
 const engineTrigger=Q('engine-trigger');
-let enginePressed=false;
-function engineStop(){
- if(!enginePressed)return;
- enginePressed=false;
- engineTrigger.classList.remove('engine-active');
- try{window.NativeAudio?.stopEngine();}catch(e){}
- try{navigator.vibrate?.(0);}catch(e){}
-}
-engineTrigger.addEventListener('pointerdown',e=>{
- e.preventDefault();e.stopPropagation();
- if(page!=='cover'||state.lockdownActive||enginePressed)return;
- enginePressed=true;
- engineTrigger.classList.add('engine-active');
- try{engineTrigger.setPointerCapture(e.pointerId);}catch(err){}
- try{if(window.NativeAudio?.startEngine)window.NativeAudio.startEngine();else navigator.vibrate?.([100,350,170,280,270]);}catch(err){}
-});
-for(const eventName of ['pointerup','pointercancel','lostpointercapture']){
- engineTrigger.addEventListener(eventName,e=>{e.stopPropagation();engineStop();});
-}
-engineTrigger.addEventListener('contextmenu',e=>e.preventDefault());
-engineTrigger.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();});
-window.addEventListener('blur',engineStop);
-document.addEventListener('visibilitychange',()=>{if(document.hidden)engineStop();});
+engineTrigger.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();eveningTeleport();});
 const sealTrigger=Q('seal-trigger');
 sealTrigger.addEventListener('pointerup',e=>e.stopPropagation());
 sealTrigger.addEventListener('dblclick',e=>e.stopPropagation());
@@ -1410,7 +1437,7 @@ window.handleAndroidBack=()=>{if(state.lockdownActive)return true;
  if(Q('settings-shade').classList.contains('open')){closeSettings();return true;}
  if(Q('history-shade').classList.contains('open')){closeHistory();return true;}
  if(Q('gallery-shade').classList.contains('open')){closeGallery();return true;}
- if(page==='board'){goCover();return true;}return false;};
+ if(page==='evening'){closeEvening();return true;}if(page==='board'){goCover();return true;}return false;};
 function prepareAmbient(){const parent=Q('leaves');for(let i=0;i<20;i++){
  const el=document.createElement('span');el.className='wind-leaf'+(i%3===0?' tiny':'');
  el.style.left=(5+(i*73)%34)+'%';el.style.top=(16+(i*29)%19)+'%';el.style.animationDuration=(4.9+(i%7)*.9)+'s';el.style.animationDelay=(-i*.45)+'s';parent.append(el);
