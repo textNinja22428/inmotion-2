@@ -19,6 +19,20 @@ window.onInMotionSongChanged=function(name,count){
  if(widget)widget.classList.toggle('paused',typeof window.NativeAudio?.isMuted==='function'&&window.NativeAudio.isMuted());
 };
 
+/* Cold-launch splash only; internal navigation never retriggers it. */
+(function bootInMotion(){
+ const splash=document.getElementById('boot-sequence');
+ if(!splash)return;
+ let ended=false;
+ const finish=()=>{
+   if(ended)return;ended=true;
+   splash.classList.add('boot-out');
+   try{window.NativeAudio?.finishBoot?.();}catch(e){}
+   setTimeout(()=>splash.remove(),680);
+ };
+ setTimeout(finish,2950);
+ window.addEventListener('pagehide',()=>{if(!ended)try{window.NativeAudio?.finishBoot?.();}catch(e){}},{once:true});
+})();
 const STATE_KEY = 'inmotion-v2';
 const nativeAvailable = !!window.NativeAudio;
 const covers = {cover:Q('cover-page'),board:Q('board-page')};
