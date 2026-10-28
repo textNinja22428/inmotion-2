@@ -757,8 +757,20 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void revealAnimatedBoot(){
+        if(nativeBootImage==null)return;
+        ImageView image=nativeBootImage;
+        nativeBootImage=null;
+        // The HTML splash is painted before the static native loading cover is removed.
+        image.animate().alpha(0f).setDuration(180).withEndAction(()->{
+            android.view.ViewParent parent=image.getParent();
+            if(parent instanceof android.view.ViewGroup)((android.view.ViewGroup)parent).removeView(image);
+        }).start();
+    }
     public class AudioBridge {
-        @JavascriptInterface public void finishBoot(){runOnUiThread(()->{bootSequenceActive=false;if(nativeBootImage!=null){final ImageView boot=nativeBootImage;nativeBootImage=null;boot.animate().alpha(0f).setDuration(260).withEndAction(()->{android.view.ViewGroup parent=(android.view.ViewGroup)boot.getParent();if(parent!=null)parent.removeView(boot);}).start();}if(bootSound!=null){try{if(bootSound.isPlaying())bootSound.stop();}catch(Exception ignored){}bootSound.release();bootSound=null;}syncPlayback();});}
+        @JavascriptInterface public void revealBoot(){runOnUiThread(()->revealAnimatedBoot());}
+
+        @JavascriptInterface public void finishBoot(){runOnUiThread(()->{bootSequenceActive=false;revealAnimatedBoot();if(bootSound!=null){try{if(bootSound.isPlaying())bootSound.stop();}catch(Exception ignored){}bootSound.release();bootSound=null;}syncPlayback();});}
 
         @JavascriptInterface public void setEveningMode(boolean enabled){runOnUiThread(()->MainActivity.this.setEveningMode(enabled));}
         @JavascriptInterface public int getEveningBackgroundCount(){return eveningBackgroundCount();}
