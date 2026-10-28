@@ -456,6 +456,7 @@ window.onInMotionMediaChanged=function(message){
  workReload();workPhotoCache.clear();
  if(editingSlot>=0)renderSlotMedia();
  if(workOpen)workRender();
+ if(eveningOpen)renderEvening();
  if(openProjectId)projectDetailMedia();
  if(openProgramDayId>=0)renderProgramDayImages();
  toast(String(message||'Media saved').slice(0,100));
@@ -1370,22 +1371,47 @@ function saveEvening(){try{localStorage.setItem(EVENING_KEY,JSON.stringify(eveni
 function renderEvening(){
  const now=new Date(),date=eveningDate(),hour=now.getHours(),minutes=now.getMinutes();
  const days=eveningEntries[date]||(eveningEntries[date]={});
- const holder=Q('evening-slots');holder.textContent='';
+ mediaReload();
+ const holder=Q('evening-slots');
+ const currentScroll=holder.scrollTop;
+ holder.textContent='';
  Q('evening-current-time').textContent=now.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})+' · '+date;
- Q('evening-remaining').textContent=(23-hour)+' SAAT '+(60-minutes)%60+' DAKİKA';
+ const remaining=Math.max(0,1440-(hour*60+minutes));
+ Q('evening-remaining').textContent=Math.floor(remaining/60)+' SAAT '+(remaining%60)+' DAKİKA';
  for(let h=0;h<24;h++){
-  const row=document.createElement('div');row.className='evening-slot'+(h===hour?' evening-now':'')+(h<hour?' evening-past':'');row.dataset.hour=String(h);
+  const data=days[h]||{};
+  const row=document.createElement('section');row.className='evening-slot'+(h===hour?' evening-now':'')+(h<hour?' evening-past':'');row.dataset.hour=String(h);
   const label=document.createElement('span');label.className='evening-time';label.textContent=String(h).padStart(2,'0')+':00';
   const info=document.createElement('div');info.className='evening-slot-content';
-  const name=document.createElement('input');name.placeholder='Bu saat için planın...';name.value=String(days[h]?.title||'');name.maxLength=140;name.setAttribute('aria-label',label.textContent+' activity');
-  const note=document.createElement('textarea');note.placeholder='Notlar / sonraki somut adım';note.value=String(days[h]?.note||'');note.rows=2;note.maxLength=2500;note.hidden=!days[h]?.expanded;
-  const toggle=document.createElement('button');toggle.type='button';toggle.className='evening-slot-toggle';toggle.textContent=note.hidden?'+':'−';
-  toggle.onclick=()=>{note.hidden=!note.hidden;toggle.textContent=note.hidden?'+':'−';if(!days[h])days[h]={};days[h].expanded=!note.hidden;saveEvening();};
-  const save=()=>{if(!days[h])days[h]={};days[h].title=name.value;days[h].note=note.value;saveEvening();};
-  name.addEventListener('input',save);note.addEventListener('input',save);
-  info.append(name,note);row.append(label,info,toggle);holder.append(row);
+  const top=document.createElement('div');top.className='evening-slot-top';
+  const name=document.createElement('input');name.placeholder='Ne yapıyoruz?';name.value=String(data.title||'');name.maxLength=140;name.setAttribute('aria-label',label.textContent+' plan');
+  const complete=document.createElement('input');complete.type='checkbox';complete.className='evening-complete';complete.checked=!!data.complete;complete.title='Tamamlandı';
+  const toggle=document.createElement('button');toggle.type='button';toggle.className='evening-slot-toggle';toggle.textContent=data.expanded?'−':'+';toggle.setAttribute('aria-label','Detayları aç / kapat');
+  top.append(name,complete,toggle);
+  const details=document.createElement('div');details.className='evening-slot-details';details.hidden=!data.expanded;
+  const next=document.createElement('input');next.placeholder='NEXT CONCRETE ACTION';next.value=String(data.next||'');next.maxLength=300;
+  const note=document.createElement('textarea');note.id='evening-note-'+h;note.placeholder='Günlük notu, hazırlık, fikirler...';note.value=String(data.note||'');note.rows=4;note.maxLength=12000;
+  const speech=document.createElement('button');speech.type='button';speech.textContent='🎙 SPEAK TO WRITE';speech.onclick=()=>speakTo(note.id);
+  const attachments=document.createElement('div');attachments.className='evening-attachments';
+  const category='hour-'+date+'-'+String(h).padStart(2,'0');
+  const gallery=document.createElement('div');gallery.className='media-grid';
+  const items=mediaItems(category,date);
+  items.forEach(item=>gallery.append(makeMediaCard(item)));
+  for(const [kind,caption] of [['image','+ PHOTO'],['video','+ VIDEO'],['file','+ FILE']]){
+   const button=document.createElement('button');button.type='button';button.textContent=caption;
+   button.onclick=()=>pickMedia(kind,date,category);
+   attachments.append(button);
+  }
+  const hint=document.createElement('small');hint.textContent='Bu güne ve saate özel kayıt · '+items.length+' ek';
+  details.append(next,note,speech,attachments,gallery,hint);
+  const save=()=>{if(!days[h])days[h]={};Object.assign(days[h],{title:name.value,note:note.value,next:next.value,complete:complete.checked});saveEvening();};
+  name.addEventListener('input',save);note.addEventListener('input',save);next.addEventListener('input',save);
+  complete.addEventListener('change',()=>{save();row.classList.toggle('evening-done',complete.checked);});
+  row.classList.toggle('evening-done',complete.checked);
+  toggle.onclick=()=>{if(!days[h])days[h]={};days[h].expanded=!details.hidden;days[h].expanded=details.hidden;details.hidden=!details.hidden;toggle.textContent=details.hidden?'+':'−';saveEvening();};
+  info.append(top,details);row.append(label,info);holder.append(row);
  }
- const active=holder.querySelector('.evening-now');if(active)active.scrollIntoView({block:'center'});
+ holder.scrollTop=currentScroll;
 }
 function openEvening(){
  if(page!=='cover'||state.lockdownActive)return;
