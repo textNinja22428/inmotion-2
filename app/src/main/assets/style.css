@@ -1165,3 +1165,19 @@ body.theme-dark .song-next{color:#f6ebd9}
 .evening-date-nav label{display:flex;align-items:center;gap:10px;flex:1;min-width:0;font:800 10px Arial,sans-serif;color:#f1ce90;letter-spacing:.6px}
 .evening-date-nav input{width:100%;min-width:0;min-height:43px;padding:7px 8px;color:#f9e2b8;background:#253147d9;border:1px solid #c5a47988;border-radius:8px;color-scheme:dark;font:600 13px Arial,sans-serif}
 .evening-date-nav button{flex:none;min-height:43px;border:1px solid #c5a47988;border-radius:8px;background:#263448cf;color:#f2d398;font:800 11px Arial,sans-serif;padding:0 12px}
+
+/* Build 195: intrinsic-height cards; never shrink expanded items inside scroller. */
+#evening-page .evening-slots{display:flex;flex-direction:column;align-items:stretch;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;min-height:0}
+#evening-page .evening-slot{position:relative;flex:0 0 auto!important;height:auto!important;max-height:none!important;overflow:visible!important;min-height:98px;isolation:isolate}
+#evening-page .evening-slot-content,#evening-page .evening-slot-details{flex-shrink:0;overflow:visible;min-height:0}
+#evening-page .evening-slot-top{min-height:52px}
+#evening-page .evening-slot-top input:not([type="checkbox"]){color:#fff7e9!important;opacity:1;font-weight:700;background:#101c3290;border-radius:8px;padding:10px 9px;border:1px solid #d7b98254}
+#evening-page .evening-slot-top input::placeholder{color:#e4d1b9!important;opacity:.95}
+#evening-page .evening-slot-details input::placeholder,#evening-page .evening-slot-details textarea::placeholder{color:#e0c6a3!important;opacity:.9}
+#evening-page .evening-slot-details input:focus,#evening-page .evening-slot-details textarea:focus,#evening-page .evening-slot-top input:focus{outline:2px solid #ffd48f;outline-offset:1px}
+#evening-page input.evening-complete{appearance:none!important;-webkit-appearance:none!important;background:#1d2940;border:2px solid #e3b66d;border-radius:6px;cursor:pointer;position:relative}
+#evening-page input.evening-complete:checked{background:#dfad59;border-color:#ffde96}
+#evening-page input.evening-complete:checked:after{content:'✓';position:absolute;left:2px;top:-4px;color:#122036;font-size:19px;font-weight:900}
+#evening-page .evening-slot.evening-past{opacity:.84}
+#evening-page .evening-slot.evening-now{z-index:2}
+.evening-transition.active{background-color:#101a32;animation:eveningTransportClean 1.15s ease-in-out both}
