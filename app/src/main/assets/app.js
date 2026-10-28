@@ -24,6 +24,18 @@ window.onInMotionSongChanged=function(name,count){
  const splash=document.getElementById('boot-sequence');
  if(!splash)return;
  let ended=false;
+ const img=splash.querySelector('img');
+ let revealed=false;
+ const reveal=()=>{
+   if(revealed)return;revealed=true;
+   requestAnimationFrame(()=>requestAnimationFrame(()=>{
+     try{window.NativeAudio?.revealBoot?.();}catch(e){}
+   }));
+ };
+ if(img&&img.complete&&img.naturalWidth)reveal();
+ else if(img){img.addEventListener('load',reveal,{once:true});img.addEventListener('error',reveal,{once:true});}
+ else reveal();
+ setTimeout(reveal,1100);
  const finish=()=>{
    if(ended)return;ended=true;
    splash.classList.add('boot-out');
