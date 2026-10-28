@@ -1208,3 +1208,17 @@ body.theme-dark .song-next{color:#f6ebd9}
 #evening-page .evening-slot:before{left:-14px}
 #evening-page .evening-panel{height:100%;height:100dvh;overflow:hidden}
 #cover-page,#cover-stage{transform-origin:center center}
+
+/* Cold-start cinematic boot; overlay does not reappear during internal navigation. */
+.boot-sequence{position:fixed;inset:0;z-index:10000;background:#071326;display:flex;align-items:center;justify-content:center;overflow:hidden;pointer-events:all;opacity:1}
+.boot-sequence img{position:absolute;width:100%;height:100%;object-fit:cover;object-position:center center;animation:bootDrift 3s ease-out both}
+.boot-sequence:after{content:'';position:absolute;inset:0;box-shadow:inset 0 0 95px #07112255;pointer-events:none}
+.boot-light{position:absolute;inset:-35%;background:linear-gradient(113deg,transparent 35%,#fff9cf00 43%,#fff5caa9 50%,#fff6d200 57%,transparent 65%);mix-blend-mode:screen;transform:translateX(-90%);animation:bootSweep 2.65s ease-in-out .2s both;pointer-events:none}
+.boot-status{position:absolute;bottom:max(44px,calc(env(safe-area-inset-bottom) + 28px));left:50%;transform:translateX(-50%);white-space:nowrap;padding:10px 15px;border:1px solid #ffe3a983;border-radius:20px;background:#07122387;color:#fff0c6;font:800 10px Arial,sans-serif;letter-spacing:2.1px;box-shadow:0 0 18px #ffc66a46;animation:bootStatus 2.3s ease-out both}
+.boot-status b{color:#ffe7a3}
+.boot-sequence.boot-out{animation:bootExit .65s cubic-bezier(.16,.84,.22,1) forwards;pointer-events:none}
+@keyframes bootDrift{from{transform:scale(1.09);filter:saturate(1.28) brightness(.78)}to{transform:scale(1);filter:saturate(1.05) brightness(1)}}
+@keyframes bootSweep{0%{transform:translateX(-90%);opacity:0}15%{opacity:1}95%{opacity:.7}100%{transform:translateX(90%);opacity:0}}
+@keyframes bootStatus{0%{opacity:0;letter-spacing:4px}27%{opacity:1}78%{opacity:1}100%{opacity:0}}
+@keyframes bootExit{0%{opacity:1;filter:brightness(1)}55%{opacity:1;filter:brightness(1.85)}100%{opacity:0;filter:brightness(2.4)}}
+@media(prefers-reduced-motion:reduce){.boot-sequence img,.boot-light,.boot-status{animation:none}.boot-sequence.boot-out{animation:bootExit .4s ease forwards}}
