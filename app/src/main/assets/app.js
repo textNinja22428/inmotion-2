@@ -1361,7 +1361,7 @@ function completeLockdown(){
 }
 
 /* Time Architecture: persistent hourly planner. */
-let eveningOpen=false,eveningClock=null;
+let eveningOpen=false,eveningClock=null,eveningShowAll=false;
 /* Transition must live outside the hidden evening page to show on the cover. */
 document.body.appendChild(Q('evening-transition'));
 const EVENING_KEY='inmotion_hourly_v1';
@@ -1380,7 +1380,11 @@ function renderEvening(){
  Q('evening-current-time').textContent=now.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})+' · '+date;
  const remaining=liveDay?Math.max(0,1440-(hour*60+minutes)):0;
  Q('evening-remaining').textContent=liveDay?Math.floor(remaining/60)+' SAAT '+(remaining%60)+' DAKİKA':'GEÇMİŞ GÜN KAYITLARI';
+ const savedHours=new Set(Object.keys(days).filter(k=>{const d=days[k];return d&&(d.title||d.note||d.next||d.complete||d.expanded);}).map(Number));
+ for(const entry of allMediaEntries)if(entry?.date===date&&/^hour-\\d{4}-\\d{2}-\\d{2}-\\d{2}$/.test(entry.category||''))savedHours.add(Number(entry.category.slice(-2)));
+ const showAll=Q('evening-show-all');if(showAll)showAll.textContent=eveningShowAll?'SAATLERİ DARALT':'TÜM 24 SAATİ GÖSTER';
  for(let h=0;h<24;h++){
+  if(!eveningShowAll&&liveDay&&Math.abs(h-hour)>3&&!savedHours.has(h))continue;
   const data=days[h]||{};
   const row=document.createElement('section');row.className='evening-slot'+(liveDay&&h===hour?' evening-now':'')+(liveDay&&h<hour?' evening-past':'');row.dataset.hour=String(h);
   const label=document.createElement('span');label.className='evening-time';label.textContent=String(h).padStart(2,'0')+':00';
@@ -1418,6 +1422,7 @@ function renderEvening(){
 function openEvening(){
  if(page!=='cover'||state.lockdownActive)return;
  page='evening';eveningOpen=true;
+ eveningShowAll=false;
  Q('evening-date').value=todayKey();
  Q('evening-date').onchange=()=>{renderEvening();Q('evening-slots').scrollTop=0;};
  Q('evening-page').classList.remove('is-hidden');
@@ -1440,10 +1445,10 @@ function importTeleportSound(){try{window.NativeAudio?.importTeleportSound?.();}
 function eveningTeleport(){
  if(page!=='cover')return;
  const transition=Q('evening-transition');
- transition.style.backgroundImage='linear-gradient(180deg,#09162a26,#050a1b7a),url("teleport_art.jpg")';
+ transition.style.backgroundImage='url("teleport_art.jpg")';
  transition.classList.add('active');
  try{window.NativeAudio?.playTeleport?.();}catch(e){}
- setTimeout(()=>{openEvening();},750);
+ setTimeout(()=>{openEvening();},680);
  setTimeout(()=>transition.classList.remove('active'),1150);
 }
 setInterval(()=>{if(eveningOpen){const now=new Date();Q('evening-current-time').textContent=now.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})+' · '+eveningDate();if(now.getMinutes()===0&&eveningDate()===todayKey()&&!Q('evening-slots').contains(document.activeElement))renderEvening();}},60000);
