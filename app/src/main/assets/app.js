@@ -1381,11 +1381,11 @@ function renderEvening(){
  const remaining=liveDay?Math.max(0,1440-(hour*60+minutes)):0;
  Q('evening-remaining').textContent=liveDay?Math.floor(remaining/60)+' SAAT '+(remaining%60)+' DAKİKA':pastDay?'GEÇMİŞ GÜN KAYITLARI':'GELECEK GÜN PLANI';
  const savedHours=new Set(Object.keys(days).filter(k=>{const d=days[k];return d&&(d.title||d.note||d.next||d.complete||d.expanded);}).map(Number));
- for(const entry of allMediaEntries)if(entry?.date===date&&/^hour-\\d{4}-\\d{2}-\\d{2}-\\d{2}$/.test(entry.category||''))savedHours.add(Number(entry.category.slice(-2)));
+ for(const entry of allMediaEntries)if(entry?.date===date&&(entry.category||'').startsWith('hour-'+date+'-'))savedHours.add(Number(entry.category.slice(-2)));
  const description=Q('evening-description');if(description)description.textContent=liveDay?'Şu anki saat aydınlatıldı. Gününü bilinçli yönet.':pastDay?'Geçmiş günün planları ve kayıtları.':'Gelecek gün için saatlik hazırlık ve planlama.';
  const showAll=Q('evening-show-all');if(showAll)showAll.textContent=eveningShowAll?'SAATLERİ DARALT':'TÜM 24 SAATİ GÖSTER';
  for(let h=0;h<24;h++){
-  if(!eveningShowAll&&!(liveDay?Math.abs(h-hour)<=3:futureDay?h>=8&&h<=22: false)&&!savedHours.has(h))continue;
+  if(!eveningShowAll&&!(liveDay?Math.abs(h-hour)<=3:futureDay?h>=8&&h<=12:h>=8&&h<=11)&&!savedHours.has(h))continue;
   const data=days[h]||{};
   const row=document.createElement('section');row.className='evening-slot'+(liveDay&&h===hour?' evening-now':'')+(liveDay&&h<hour?' evening-past':'');row.dataset.hour=String(h);
   const label=document.createElement('span');label.className='evening-time';label.textContent=String(h).padStart(2,'0')+':00';
@@ -1430,7 +1430,7 @@ function openEvening(){
  Q('cover-page').classList.add('is-hidden');
  const backgrounds=['evening_bg_1.jpg','evening_bg_2.jpg','evening_bg_3.jpg'];
  Q('evening-background').style.backgroundImage='linear-gradient(160deg,#0b173377,#151021a0),url("'+backgrounds[Math.floor(Math.random()*backgrounds.length)]+'")';
- renderEvening();setTimeout(()=>{let a=Q('evening-slots').querySelector('.evening-now');if(a)a.scrollIntoView({block:'center'});},100);
+ renderEvening();setTimeout(()=>{const box=Q('evening-slots'),active=box.querySelector('.evening-now');if(active)box.scrollTop=Math.max(0,active.offsetTop-box.offsetTop-box.clientHeight/2+active.clientHeight/2);},100);
  try{window.NativeAudio?.setEveningMode?.(true);}catch(e){}
  syncCoverVideo();
 }
