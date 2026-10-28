@@ -1366,21 +1366,23 @@ let eveningOpen=false,eveningClock=null;
 document.body.appendChild(Q('evening-transition'));
 const EVENING_KEY='inmotion_hourly_v1';
 let eveningEntries={};try{eveningEntries=JSON.parse(localStorage.getItem(EVENING_KEY)||'{}')||{};}catch(e){}
-function eveningDate(){return todayKey();}
+function eveningDate(){const selected=Q('evening-date')?.value;return /^\d{4}-\d{2}-\d{2}$/.test(selected||'')?selected:todayKey();}
+function eveningToday(){Q('evening-date').value=todayKey();renderEvening();}
 function saveEvening(){try{localStorage.setItem(EVENING_KEY,JSON.stringify(eveningEntries));}catch(e){toast('Hourly planner storage full');}}
 function renderEvening(){
  const now=new Date(),date=eveningDate(),hour=now.getHours(),minutes=now.getMinutes();
  const days=eveningEntries[date]||(eveningEntries[date]={});
+ const liveDay=date===todayKey();
  mediaReload();
  const holder=Q('evening-slots');
  const currentScroll=holder.scrollTop;
  holder.textContent='';
  Q('evening-current-time').textContent=now.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})+' · '+date;
- const remaining=Math.max(0,1440-(hour*60+minutes));
- Q('evening-remaining').textContent=Math.floor(remaining/60)+' SAAT '+(remaining%60)+' DAKİKA';
+ const remaining=liveDay?Math.max(0,1440-(hour*60+minutes)):0;
+ Q('evening-remaining').textContent=liveDay?Math.floor(remaining/60)+' SAAT '+(remaining%60)+' DAKİKA':'GEÇMİŞ GÜN KAYITLARI';
  for(let h=0;h<24;h++){
   const data=days[h]||{};
-  const row=document.createElement('section');row.className='evening-slot'+(h===hour?' evening-now':'')+(h<hour?' evening-past':'');row.dataset.hour=String(h);
+  const row=document.createElement('section');row.className='evening-slot'+(liveDay&&h===hour?' evening-now':'')+(liveDay&&h<hour?' evening-past':'');row.dataset.hour=String(h);
   const label=document.createElement('span');label.className='evening-time';label.textContent=String(h).padStart(2,'0')+':00';
   const info=document.createElement('div');info.className='evening-slot-content';
   const top=document.createElement('div');top.className='evening-slot-top';
@@ -1408,7 +1410,7 @@ function renderEvening(){
   name.addEventListener('input',save);note.addEventListener('input',save);next.addEventListener('input',save);
   complete.addEventListener('change',()=>{save();row.classList.toggle('evening-done',complete.checked);});
   row.classList.toggle('evening-done',complete.checked);
-  toggle.onclick=()=>{if(!days[h])days[h]={};days[h].expanded=!details.hidden;days[h].expanded=details.hidden;details.hidden=!details.hidden;toggle.textContent=details.hidden?'+':'−';saveEvening();};
+  toggle.onclick=()=>{if(!days[h])days[h]={};days[h].expanded=details.hidden;details.hidden=!details.hidden;toggle.textContent=details.hidden?'+':'−';saveEvening();};
   info.append(top,details);row.append(label,info);holder.append(row);
  }
  holder.scrollTop=currentScroll;
@@ -1416,6 +1418,8 @@ function renderEvening(){
 function openEvening(){
  if(page!=='cover'||state.lockdownActive)return;
  page='evening';eveningOpen=true;
+ Q('evening-date').value=todayKey();
+ Q('evening-date').onchange=()=>{renderEvening();Q('evening-slots').scrollTop=0;};
  Q('evening-page').classList.remove('is-hidden');
  Q('cover-page').classList.add('is-hidden');
  const backgrounds=['evening_bg_1.jpg','evening_bg_2.jpg','evening_bg_3.jpg'];
@@ -1439,10 +1443,10 @@ function eveningTeleport(){
  transition.style.backgroundImage='linear-gradient(180deg,#09162a26,#050a1b7a),url("teleport_art.jpg")';
  transition.classList.add('active');
  try{window.NativeAudio?.playTeleport?.();}catch(e){}
- setTimeout(()=>{openEvening();},400);
- setTimeout(()=>transition.classList.remove('active'),950);
+ setTimeout(()=>{openEvening();},750);
+ setTimeout(()=>transition.classList.remove('active'),1150);
 }
-setInterval(()=>{if(eveningOpen){const now=new Date();Q('evening-current-time').textContent=now.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})+' · '+eveningDate();if(now.getMinutes()===0)renderEvening();}},60000);
+setInterval(()=>{if(eveningOpen){const now=new Date();Q('evening-current-time').textContent=now.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})+' · '+eveningDate();if(now.getMinutes()===0&&eveningDate()===todayKey()&&!Q('evening-slots').contains(document.activeElement))renderEvening();}},60000);
 
 const engineTrigger=Q('engine-trigger');
 engineTrigger.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();eveningTeleport();});
