@@ -1406,6 +1406,7 @@ function closeEvening(){
 }
 function importEveningAssets(){try{window.NativeAudio?.importEveningAssets?.();}catch(e){toast('Import unavailable');}}
 function importTeleportImage(){try{window.NativeAudio?.importTeleportImage?.();}catch(e){toast('Transition image import unavailable');}}
+function importTeleportSound(){try{window.NativeAudio?.importTeleportSound?.();}catch(e){toast('Teleport sound import unavailable');}}
 function eveningTeleport(){
  if(page!=='cover')return;
  const transition=Q('evening-transition');
