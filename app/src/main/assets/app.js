@@ -1119,8 +1119,8 @@ function loadIdentity(){
   if(input&&typeof input==='object'){
    return {
     tone:['balanced','direct','companion'].includes(input.tone)?input.tone:'balanced',
-    directive:typeof input.directive==='string'?input.directive.slice(0,350):IDENTITY_DEFAULT.directive,
-    profile:typeof input.profile==='string'?input.profile.slice(0,1200):'',
+    directive:typeof input.directive==='string'?input.directive:IDENTITY_DEFAULT.directive,
+    profile:typeof input.profile==='string'?input.profile:'',
     sendProfile:true,
     useHistory:true
    };
@@ -1138,8 +1138,8 @@ function hydrateIdentitySettings(){
 function saveIdentitySettings(){
  const updated={
   tone:Q('identity-tone').value,
-  directive:Q('identity-directive').value.trim().slice(0,350),
-  profile:Q('identity-profile').value.trim().slice(0,1200),
+  directive:Q('identity-directive').value.trim(),
+  profile:Q('identity-profile').value.trim(),
   sendProfile:true,
   useHistory:true
  };
@@ -1215,8 +1215,10 @@ function aiSelectedMemory(query){
   boardDays:state.days||{},
   overrides:state.overrideLog||[],
   journals:journalNotes||{},
+  scheduleBoard:state.days||{},
   workProjects:projects||{},
-  projectDayLinks:typeof workProjectLinks==='undefined'?{}:workProjectLinks,
+  projectDayLinks:projectTags||{},
+  exercisePrograms:sixPrograms||{},
   hourlyPlanner:eveningEntries||{},
   generalNotes:generalNotes||{},
   mediaMetadata:safeMedia,
@@ -1682,6 +1684,7 @@ Q('lockdown-notes').addEventListener('input',()=>{
 });
 
 window.handleAndroidBack=()=>{if(state.lockdownActive)return true;
+ if(generalNotesOpen){closeGeneralNotes();return true;}
  if(openProgramDayId>=0){closeProgramDay();return true;}
  if(Q('project-detail-shade').classList.contains('open')){closeProjectDetail();return true;}
  if(Q('project-category-shade').classList.contains('open')){closeProjectCategory();return true;}if(programOpen){closeProgram();return true;}if(Q('work-lightbox').classList.contains('open')){closeWorkPhoto();return true;}if(workOpen){closeWorkJournal();return true;}if(Q('agent-shade').classList.contains('open')){closeInMotionAgent();return true;}if(Q('stopwatch-shade').classList.contains('open')){closeStopwatch();return true;}if(Q('modal-shade').classList.contains('open')){closeEditor();return true;}
