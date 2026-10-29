@@ -19,6 +19,7 @@
   </div>
   <div id="date-panel" class="date-panel"><div id="date-weekday" class="date-weekday"></div><div class="date-eyebrow">IN MOTION / TODAY MATTERS</div><div id="time-greeting" class="time-greeting" aria-live="polite"></div><div id="date-long" class="date-long" hidden></div></div>
   <div class="image-stage" id="cover-stage"><img class="base-image cover-art" src="cover.png" alt="IN MOTION cover" draggable="false"><video id="cover-video" class="cover-motion-video" autoplay muted loop playsinline webkit-playsinline preload="auto" aria-hidden="true" disablepictureinpicture><source src="cover_character_motion.mp4" type="video/mp4"></video><img id="bolt-glow" src="lightning_glow.png" alt="" draggable="false"><div id="spark-trail" aria-hidden="true"><span></span></div><div id="bolt-flash" aria-hidden="true"></div><div id="leaves" aria-hidden="true"></div><div id="birds-flight" aria-hidden="true"><svg viewBox="0 0 60 34"><path d="M2 17 Q16 0 28 17 Q38 5 58 16"/></svg><svg viewBox="0 0 60 34"><path d="M2 18 Q20 6 30 17 Q41 0 58 15"/></svg></div><video id="seal-video" class="seal-motion-video" autoplay muted loop playsinline webkit-playsinline preload="auto" aria-hidden="true" disablepictureinpicture><source src="seal_wide.mp4" type="video/mp4"></video><button id="work-trigger" class="work-trigger" type="button" onclick="startWorkTransition()" aria-label="Open animated work journal"></button><button id="seal-trigger" class="seal-trigger" type="button" aria-label="Tap seal five times to activate lockdown"></button><button id="engine-trigger" class="engine-trigger" type="button" aria-label="Hold to activate The Engine" title="Hold to activate The Engine"></button></div>
+  <div class="cover-utility-dock"><div class="cover-utility-clock"><small>LOCAL TIME</small><strong id="cover-live-time">--:--:--</strong></div><button type="button" class="general-notes-launch" onclick="enterGeneralNotes()" aria-label="Open Daily and General Notes"><span>✦</span><strong>DAILY &amp; GENERAL<br>NOTES</strong></button></div>
   <button id="agent-launch" class="agent-launch" type="button" onclick="openInMotionAgent()" aria-label="Open IN MOTION Personal Intelligence"><span class="agent-launch-mark">✦</span><span>ASK</span></button>
   <button class="floating-control control-settings" aria-label="Settings" onclick="openSettings()"><span class="gear-icon">⚙</span></button>
   </section>
@@ -39,7 +40,21 @@
   
 </section>
 </main>
-<div id="entry-transition" class="entry-transition" aria-hidden="true"><span class="entry-strike"></span><span class="entry-strike second"></span></div>
+<div id="entry-transition" class="entry-transition" aria-hidden="true"><img src="cycle_transition.jpg" alt="" /><div class="cycle-entry-flare"></div></div>
+<div id="notes-transition" class="notes-transition" aria-hidden="true"><img src="notes_transition.jpg" alt="" /><div class="notes-entry-flare"></div></div>
+<section id="general-notes-page" class="general-notes-page is-hidden" aria-label="Daily and General Notes">
+  <header class="general-notes-header"><button type="button" onclick="closeGeneralNotes()" aria-label="Back">‹</button><span id="general-notes-time" class="live-mini-time">--:--:--</span></header>
+  <div class="general-notes-background">
+    <img src="general_notes_menu.jpg" alt="General Notes and To-Dos background" />
+    <button type="button" class="notes-hotspot notes-hotspot-general" onclick="openNotesCategory('general')" aria-label="General Notes"><span id="notes-count-general">00</span></button>
+    <button type="button" class="notes-hotspot notes-hotspot-todo" onclick="openNotesCategory('todo')" aria-label="To-Do List"><span id="notes-count-todo">00</span></button>
+    <button type="button" class="notes-hotspot notes-hotspot-someday" onclick="openNotesCategory('someday')" aria-label="Someday"><span id="notes-count-someday">00</span></button>
+  </div>
+  <section id="notes-category-panel" class="notes-category-panel" hidden>
+    <header><button type="button" onclick="closeNotesCategory()" aria-label="Back to notes">‹</button><strong id="notes-category-title">GENERAL NOTES</strong><span id="notes-category-time" class="live-mini-time">--:--:--</span></header>
+    <div class="notes-category-body"><div id="notes-items" class="notes-items"></div><div class="notes-compose"><input id="notes-new-title" maxlength="200" placeholder="Başlık / next action"><textarea id="notes-new-body" rows="4" placeholder="Notunu yaz veya konuşarak ekle..."></textarea><div class="notes-compose-actions"><button type="button" onclick="speakTo('notes-new-body')">🎙 SPEAK</button><button type="button" onclick="addGeneralNote()">+ SAVE</button></div></div></div>
+  </section>
+</section>
 <div id="work-entry-transition" class="work-entry-transition" aria-hidden="true"><img src="work_transition.jpg" alt="" /><div class="work-entry-flare"></div></div>
 <div id="modal-shade" class="shade" aria-hidden="true"><section class="editor-card" role="dialog" aria-modal="true" aria-labelledby="editor-title"><header class="editor-header"><div><div class="editor-overline" id="editor-overline">TODAY / SLOT</div><h1 id="editor-title">SECTION</h1></div><button class="icon-close" onclick="closeEditor()" aria-label="Close">×</button></header><div class="voice-edit-bar"><span>VOICE NOTES</span><button id="editor-mic" class="voice-mic-btn" type="button" onclick="startInMotionSpeech('editor')" aria-label="Dictate into this note"><span aria-hidden="true">🎙</span> SPEAK TO WRITE</button></div><textarea id="editor-input" placeholder="Write or dictate your notes here..." spellcheck="false"></textarea><div class="media-area media-slot-area">
  <div class="media-area-head"><strong>PHOTO &amp; VIDEO ATTACHMENTS</strong><small id="slot-media-count">0 SAVED</small></div>
@@ -50,7 +65,7 @@
 <div id="settings-shade" class="shade" aria-hidden="true"><section class="settings-card" role="dialog" aria-modal="true" aria-labelledby="settings-title"><header class="editor-header"><div><div class="editor-overline">IN MOTION</div><h1 id="settings-title">SETTINGS</h1></div><button class="icon-close" onclick="closeSettings()" aria-label="Close">×</button></header>
 <label class="setting-row"><span><strong>Background music</strong><small>Beneath the Mask · instrumental</small></span><input id="music-enabled" class="switch-input" type="checkbox"><span class="switch-track"></span></label>
 <label class="setting-row"><span><strong>Dark mode</strong><small>Deep charcoal · warm amber</small></span><input id="dark-enabled" class="switch-input" type="checkbox"><span class="switch-track"></span></label>
-<label class="setting-row"><span><strong>Selection sound</strong><small>Short click for every touch</small></span><input id="sound-enabled" class="switch-input" type="checkbox"><span class="switch-track"></span></label>
+<label class="setting-row"><span><strong>Selection sound</strong><small>Only intentional selections · menu_buki_lvup</small></span><input id="sound-enabled" class="switch-input" type="checkbox"><span class="switch-track"></span></label>
 <div class="ai-config"><strong>OPENAI · SECURE CONNECTION</strong><label for="ai-endpoint">Your private AI Worker URL</label><input id="ai-endpoint" type="url" placeholder="https://my-inmotion-ai.example.workers.dev/chat" autocomplete="off"><label for="ai-token">Pairing token</label><input id="ai-token" type="password" placeholder="Enter your private pairing token" autocomplete="off"><p>AI is only used after you configure a secure endpoint. Your OpenAI API key belongs on the server, never in this APK.</p><button type="button" onclick="saveAIConnection()">SAVE AI CONNECTION</button><button type="button" onclick="clearAIConnection()">DISCONNECT</button></div>
 <div class="identity-config" id="identity-config">
   <div class="identity-heading"><span class="identity-spark">✦</span><div><strong>IN MOTION / PERSONAL INTELLIGENCE</strong><small>IDENTITY &amp; MEMORY · 3.1</small></div></div>
@@ -64,13 +79,13 @@
   <textarea id="identity-directive" rows="3" maxlength="350" placeholder="What do you want IN MOTION to help you achieve?"></textarea>
   <label for="identity-profile">PERSONAL MEMORY · EDITABLE BY YOU</label>
   <textarea id="identity-profile" rows="4" maxlength="1200" placeholder="Goals, routines, preferences, and non-sensitive facts you want IN MOTION to remember."></textarea>
-  <label class="identity-check"><input id="identity-send-profile" type="checkbox"><span>Share this personal profile with GPT on each question</span></label>
-  <label class="identity-check"><input id="identity-use-history" type="checkbox"><span>Include up to 8 recent saved conversation messages</span></label>
-  <p>Profile and conversations remain saved on your phone. Selected information is sent to your private GPT connection only when enabled. Daily notes have a separate opt-in toggle inside ASK IN MOTION.</p>
+
+
+  <p>Full available IN MOTION conversation history, profile, work, exercise, study, schedules and notes are included in private GPT requests. Server context limits and source permissions still apply. Media files remain on your device unless separately attached.</p>
   <button type="button" onclick="saveIdentitySettings()">SAVE PERSONALITY &amp; MEMORY</button>
   <button type="button" class="identity-reset" onclick="resetIdentitySettings()">RESET IDENTITY SETTINGS</button>
 </div>
-<p class="settings-note">Your Gallery, daily journals and Guardian records remain on this device unless you specifically enable sharing relevant notes in ASK IN MOTION. Voice dictation uses your Android recognition service and may be processed online depending on your device settings. AI requests through your private Worker incur separate API charges.</p><button class="save-btn settings-done" onclick="closeSettings()">DONE</button></section></div>
+<p class="settings-note">When GPT is connected, available IN MOTION text records are sent to your configured private AI Worker for answering. Disconnect the Worker to keep interactions local. Voice dictation uses your Android recognition service and may be processed online depending on your device settings. AI requests through your private Worker incur separate API charges.</p><button class="save-btn settings-done" onclick="closeSettings()">DONE</button></section></div>
 <div id="gallery-shade" class="shade" aria-hidden="true"><section class="gallery-card" role="dialog" aria-modal="true" aria-labelledby="gallery-title"><header class="editor-header"><div><div class="editor-overline">IN MOTION / MEMORY LOG</div><h1 id="gallery-title">GÜNLÜK LOGU</h1></div><button class="icon-close" onclick="closeGallery()" aria-label="Close">×</button></header><div class="log-date-row"><label for="log-date">GÜN SEÇ</label><input id="log-date" type="date" onchange="openSelectedDayLog()" /><button type="button" onclick="openSelectedDayLog()">GÖSTER</button></div><div id="gallery-list" class="gallery-list"></div><button class="save-btn settings-done" onclick="closeGallery()">CLOSE</button></section></div>
 <div id="history-shade" class="shade" aria-hidden="true"><section class="history-card" role="dialog" aria-modal="true" aria-labelledby="history-title"><header class="editor-header"><div><div class="editor-overline">ARCHIVED / READ ONLY</div><h1 id="history-title">DAY</h1></div><button class="icon-close" onclick="closeHistory()" aria-label="Close">×</button></header><div id="history-scroll" class="history-scroll"><div id="history-board" class="history-board"><img src="board.jpg" alt="Archived agenda"><div id="history-slots"></div></div><section class="history-media-area"><strong>SAVED ATTACHMENTS</strong><div id="history-media-list"></div></section></div><div class="history-footer"><span class="history-status" id="history-status"></span><div class="history-actions"><button type="button" class="zoom-btn" onclick="changeHistoryZoom(-1)" aria-label="Zoom out">−</button><button type="button" class="zoom-btn" onclick="changeHistoryZoom(1)" aria-label="Zoom in">+</button><button type="button" class="save-image-btn" onclick="saveHistoryToPhone()">SAVE TO PHONE</button></div></div></section></div>
 <div id="lockdown-shade" class="lockdown-shade" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Disruption lockdown">
@@ -152,8 +167,8 @@
   <section class="agent-card" role="dialog" aria-modal="true" aria-labelledby="agent-title">
     <header class="editor-header"><div><div class="editor-overline">IN MOTION / PERSONAL INTELLIGENCE</div><h1 id="agent-title">ASK IN MOTION <span class="agent-title-spark">✦</span></h1></div><button class="icon-close" type="button" onclick="closeInMotionAgent()" aria-label="Close personal intelligence">×</button></header>
     <div class="agent-private"><span>● PERSONAL MEMORY</span><span id="agent-connect-status">LOCAL MODE · AI NOT CONFIGURED</span></div>
- <div class="agent-ai-tools"><label><input id="agent-include-memory" type="checkbox"> SHARE RELEVANT NOTES WITH AI</label><button type="button" onclick="openChatGPTShortcut()">CHATGPT ↗</button><button type="button" onclick="openIdentitySettings()">PERSONALIZE ⚙</button></div>
-    <p class="agent-description">Search your daily notes, completed tasks, Gallery history and Guardian override log. Everything stays on this device.</p>
+ <div class="agent-ai-tools"><span class="agent-memory-mode">✦ FULL APP MEMORY</span><button type="button" onclick="openChatGPTShortcut()">CHATGPT ↗</button><button type="button" onclick="openIdentitySettings()">PERSONALIZE ⚙</button></div>
+    <p class="agent-description">Search your daily notes, completed tasks, Gallery history and Guardian override log. Available on-device records can be included when your private GPT connection is active.</p>
     <div class="agent-suggestions">
       <button type="button" onclick="askAgentPreset('today')">TODAY</button>
       <button type="button" onclick="askAgentPreset('history')">HISTORY</button>
@@ -165,6 +180,6 @@
   </section>
 </div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
-<audio id="web-audio" src="beneath_the_mask_instrumental.mp3" preload="none" loop></audio><audio id="web-click" src="select_sound_loud.wav" preload="auto"></audio><audio id="web-lockdown" src="guardians_lockdown.mp3" preload="none" loop></audio>
+<audio id="web-audio" src="beneath_the_mask_instrumental.mp3" preload="none" loop></audio><audio id="web-click" src="menu_select_new.wav" preload="auto"></audio><audio id="web-lockdown" src="guardians_lockdown.mp3" preload="none" loop></audio>
 <script src="app.js"></script>
 </body></html>
