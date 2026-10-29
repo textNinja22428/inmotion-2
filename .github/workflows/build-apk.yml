@@ -71,6 +71,13 @@ jobs:
               -dname "CN=IN MOTION Debug, O=IN MOTION, C=TR"
           fi
 
+      - name: Validate app and Worker JavaScript
+        shell: bash
+        run: |
+          node --check app/src/main/assets/app.js
+          cp ai-worker/src/index.js /tmp/inmotion-worker.mjs
+          node --check /tmp/inmotion-worker.mjs
+
       - name: Build APK
         run: gradle --no-daemon assembleDebug
 
