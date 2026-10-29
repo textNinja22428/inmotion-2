@@ -1110,8 +1110,8 @@ const IDENTITY_DEFAULT={
  tone:'balanced',
  directive:'Protect clarity. Maintain momentum. Turn intention into sustainable action.',
  profile:'',
- sendProfile:false,
- useHistory:false
+ sendProfile:true,
+ useHistory:true
 };
 function loadIdentity(){
  try {
@@ -1121,8 +1121,8 @@ function loadIdentity(){
     tone:['balanced','direct','companion'].includes(input.tone)?input.tone:'balanced',
     directive:typeof input.directive==='string'?input.directive.slice(0,350):IDENTITY_DEFAULT.directive,
     profile:typeof input.profile==='string'?input.profile.slice(0,1200):'',
-    sendProfile:input.sendProfile===true,
-    useHistory:input.useHistory===true
+    sendProfile:true,
+    useHistory:true
    };
   }
  }catch(e){}
@@ -1133,16 +1133,15 @@ function hydrateIdentitySettings(){
  Q('identity-tone').value=identitySettings.tone;
  Q('identity-directive').value=identitySettings.directive;
  Q('identity-profile').value=identitySettings.profile;
- Q('identity-send-profile').checked=identitySettings.sendProfile;
- Q('identity-use-history').checked=identitySettings.useHistory;
+
 }
 function saveIdentitySettings(){
  const updated={
   tone:Q('identity-tone').value,
   directive:Q('identity-directive').value.trim().slice(0,350),
   profile:Q('identity-profile').value.trim().slice(0,1200),
-  sendProfile:Q('identity-send-profile').checked,
-  useHistory:Q('identity-use-history').checked
+  sendProfile:true,
+  useHistory:true
  };
  if(!['balanced','direct','companion'].includes(updated.tone))updated.tone='balanced';
  try{
@@ -1150,8 +1149,7 @@ function saveIdentitySettings(){
   identitySettings=updated;toast('IN MOTION identity & memory saved ✓');
   if(Q('agent-shade').classList.contains('open')){
    Q('agent-footer-mode').textContent=aiAvailable
-    ? 'GPT · '+(updated.useHistory?'CHAT CONTEXT ON':'CHAT CONTEXT OFF')+
-      (updated.sendProfile?' · PROFILE ON':'')
+    ? 'GPT · FULL APP MEMORY'
     : 'LOCAL SEARCH · DEVICE ONLY';
   }
  }catch(e){toast('Could not save settings. Check device storage.');}
@@ -1166,21 +1164,11 @@ function openIdentitySettings(){
  requestAnimationFrame(()=>Q('identity-config').scrollIntoView({block:'start',behavior:'smooth'}));
 }
 function recentAIMessages(){
- if(!identitySettings.useHistory)return [];
+ /* All prior saved exchanges from THIS app, not the user's separate ChatGPT account. */
  const chat=Array.isArray(state.agentChat)?state.agentChat:[];
- const pairs=[];
- for(let i=1;i<chat.length;i++){
-  const question=chat[i-1],response=chat[i];
-  if(question?.source!=='ai'||question.who!=='user'
-     ||response?.source!=='ai'||response.who!=='assistant')continue;
-  pairs.push(
-   {role:'user',content:String(question.message||'').slice(0,320)},
-   {role:'assistant',content:String(response.message||'').slice(0,320)}
-  );
- }
- return pairs.slice(-8);
+ return chat.filter(m=>(m.who==='user'||m.who==='assistant')&&m.message)
+  .map(m=>({role:m.who==='user'?'user':'assistant',content:String(m.message)}));
 }
-
 /* AI can be called only after the user configures a private HTTPS proxy.
    Memory is not uploaded unless the checkbox is ticked. */
 let aiAvailable=false,aiPending=false;
@@ -1194,7 +1182,7 @@ function loadAIConnection(){
  Q('agent-connect-status').textContent=aiAvailable?'GPT SETUP SAVED · CONNECTION UNTESTED':'LOCAL MODE · AI NOT CONFIGURED';
  const intro=Q('agent-shade').querySelector('.agent-description');
  if(intro)intro.textContent=aiAvailable
-  ?'Ask GPT using your private connection. Your saved notes are only shared when you choose the checkbox.'
+  ?'Ask GPT with available IN MOTION history, tasks, routines and journals. Your app text context is sent via the configured private Worker.'
   :'Search your daily notes, completed tasks, Gallery and Guardian history privately on this device.';
 }
 function saveAIConnection(){
@@ -1214,25 +1202,40 @@ function clearAIConnection(){
  Q('ai-endpoint').value='';Q('ai-token').value='';loadAIConnection();toast('AI disconnected');
 }
 function aiSelectedMemory(query){
- const words=String(query).toLocaleLowerCase('tr-TR').match(/[\p{L}\p{N}]{3,}/gu)||[];
- return agentDocuments().map(x=>{
-  const haystack=(x.title+' '+x.note).toLocaleLowerCase('tr-TR');
-  const score=words.reduce((n,w)=>n+(haystack.includes(w)?2:0),0)+(x.date===state.activeDay?1:0);
-  return {...x,score};
- }).filter(x=>x.score>0).sort((a,b)=>b.score-a.score)
- .slice(0,8).map(x=>x.date+' | '+x.title+': '+x.note.slice(0,550)).join('\n').slice(0,5000);
+ /* Query-independent app knowledge. No 8-record retrieval cap and no opt-in checkbox.
+    Photographs/video/file *bytes* are never uploaded by this function. */
+ const safeMedia=(allMediaEntries||[]).map(x=>({
+  id:x.id,date:x.date,category:x.category,kind:x.kind,name:x.name||x.filename||''
+ }));
+ const memory={
+  protocol:'IN MOTION personal application memory (only device-local sources, not ChatGPT account chat history)',
+  date:todayKey(),
+  question:query,
+  identity:{tone:identitySettings.tone,directive:identitySettings.directive,profile:identitySettings.profile},
+  boardDays:state.days||{},
+  overrides:state.overrideLog||[],
+  journals:journalNotes||{},
+  workProjects:projects||{},
+  projectDayLinks:typeof workProjectLinks==='undefined'?{}:workProjectLinks,
+  hourlyPlanner:eveningEntries||{},
+  generalNotes:generalNotes||{},
+  mediaMetadata:safeMedia,
+  extraRecords:agentDocuments()
+ };
+ return JSON.stringify(memory);
 }
 let agentThinkingNode=null;
 window.onInMotionAIResult=function(ok,text){
  aiPending=false;
  if(agentThinkingNode){agentThinkingNode.remove();agentThinkingNode=null;}
- const message=String(text||'').slice(0,4200);
+ const message=String(text||'');
  agentAddMessage('assistant',ok?message:'AI connection failed: '+message+'\nLocal search remains available.',ok,'ai');
 };
 
 /* IN MOTION 2.8 — on-device personal memory, never transmitted to an API.
    A deterministic local search / recap, NOT a remotely connected AI model. */
-const AGENT_MAX_MESSAGES=36;
+/* Message history is retained until the user explicitly clears it. */
+const AGENT_MAX_MESSAGES=Number.MAX_SAFE_INTEGER;
 const AGENT_STOPWORDS=new Set([
  've','veya','bir','bu','ben','bana','benim','ile','icin','için','ne','neler','nedir',
  'hakkinda','hakkında','bunu','olan','oldu','gibi','nerede','hangi','var','yok',
@@ -1346,8 +1349,7 @@ function agentAddMessage(who,message,save=true,source='local'){
  node.append(label,text);area.append(node);area.scrollTop=area.scrollHeight;
  if(save){
   if(!Array.isArray(state.agentChat))state.agentChat=[];
-  state.agentChat.push({who,message:String(message).slice(0,4000),source});
-  if(state.agentChat.length>AGENT_MAX_MESSAGES)state.agentChat=state.agentChat.slice(-AGENT_MAX_MESSAGES);
+  state.agentChat.push({who,message:String(message),source});
   persist();
  }
  return node;
@@ -1356,14 +1358,13 @@ function openInMotionAgent(){loadAIConnection();
  if(state.lockdownActive)return;
  rollover();
  const area=Q('agent-messages');area.textContent='';
- const messages=Array.isArray(state.agentChat)?state.agentChat.slice(-AGENT_MAX_MESSAGES):[];
+ const messages=Array.isArray(state.agentChat)?state.agentChat:[];
  if(!messages.length)agentAddMessage('assistant',
-  aiAvailable?'IN MOTION is online. I can help with WORK, E,E, STUDY and GUARDIAN. Set personality and memory options under PERSONALIZE. Past chats and notes are shared only with your permission.':
+  aiAvailable?'IN MOTION is connected. Available app records, projects, daily notes and saved conversations can inform every answer.':
   'Your local records are ready. Ask me about today, history or Guardian; configure your private GPT connection to enable AI replies.',false);
  else for(const item of messages)agentAddMessage(item.who==='user'?'user':'assistant',String(item.message||''),false,item.source==='ai'?'ai':'local');
  Q('agent-footer-mode').textContent=aiAvailable
-  ? 'GPT · '+(identitySettings.useHistory?'CHAT CONTEXT ON':'CHAT CONTEXT OFF')+
-    (identitySettings.sendProfile?' · PROFILE ON':'')
+  ? 'GPT · FULL APP MEMORY'
   : 'LOCAL SEARCH · DEVICE ONLY';
  show('agent-shade');
 }
@@ -1373,17 +1374,17 @@ function submitAgentQuery(){
  const online=aiAvailable&&window.NativeAudio&&typeof window.NativeAudio.askInMotionAI==='function';
  // Capture previous completed GPT turns BEFORE recording the new question.
  const history=online?recentAIMessages():[];
- input.value='';agentAddMessage('user',query.slice(0,600),true,online?'ai':'local');
+ input.value='';agentAddMessage('user',query,true,online?'ai':'local');
  if(online){
   aiPending=true;
-  const context=Q('agent-include-memory').checked?aiSelectedMemory(query).slice(0,4000):'';
+  const context=aiSelectedMemory(query);
   const options={
    tone:identitySettings.tone,
-   directive:identitySettings.directive.slice(0,350),
-   profile:identitySettings.sendProfile?identitySettings.profile.slice(0,1200):''
+   directive:identitySettings.directive,
+   profile:identitySettings.profile
   };
   const payload=JSON.stringify({
-   question:query.slice(0,1200),
+   question:query,
    context,history,
    identity:options
   });
