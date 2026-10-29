@@ -136,7 +136,8 @@ function toggleDone(index){
 function enterBoard(){
  rollover();
  if(page!=='cover'||entryPending||state.lockdownActive)return;
- entryPending=true;boardReadyAt=Date.now()+850;
+ entryPending=true;boardReadyAt=Date.now()+1160;
+ try{window.NativeAudio?.playCycleTransition?.();}catch(e){}
  const wipe=Q('entry-transition');
  wipe.classList.remove('is-active');
  void wipe.offsetWidth;
@@ -148,12 +149,12 @@ function enterBoard(){
    covers.board.classList.remove('is-hidden');
    covers.cover.classList.add('is-hidden');
    syncCoverVideo();
- },300);
+ },510);
  setTimeout(()=>{
    wipe.classList.remove('is-active');
    entryPending=false;
    covers.board.classList.remove('board-input-guard');
- },850);
+ },1160);
 }
 function goCover(){page='cover';covers.cover.classList.remove('is-hidden');covers.board.classList.add('is-hidden');covers.board.classList.remove('board-input-guard');updateXP();syncCoverVideo();}
 
@@ -379,12 +380,17 @@ Q('sound-enabled').addEventListener('change',e=>{state.soundEnabled=e.target.che
 for(const id of ['modal-shade','settings-shade','gallery-shade','history-shade','stopwatch-shade','agent-shade'])Q(id).addEventListener('pointerdown',e=>{if(e.target===Q(id)){if(id==='modal-shade')closeEditor();else if(id==='settings-shade')closeSettings();else if(id==='gallery-shade')closeGallery();else if(id==='stopwatch-shade')closeStopwatch();else if(id==='agent-shade')closeInMotionAgent();else closeHistory();}});
 // All pointer interactions: a single select sample through native SoundPool, or HTML audio in browsers.
 const clickAudio=Q('web-click');let clickedAt=0;
-document.addEventListener('pointerdown',()=>{
- if(state.soundEnabled===false)return;
- const now=Date.now();if(now-clickedAt<55)return;clickedAt=now;
+/* Only semantic selections play a sound; blank space, text focus, scrolling,
+   editing, and media seeking do not. */
+document.addEventListener('click',e=>{
+ if(state.soundEnabled===false||!e.isTrusted)return;
+ const interactive=e.target.closest('button, [role="button"], a[href], select, input[type="checkbox"], input[type="radio"]');
+ if(!interactive||interactive.disabled||interactive.closest('.boot-sequence'))return;
+ if(interactive.classList.contains('work-trigger')||interactive.id==='engine-trigger'||interactive.classList.contains('cycle-hotspot'))return;
+ const now=Date.now();if(now-clickedAt<95)return;clickedAt=now;
  if(nativeAvailable){try{if(window.NativeAudio.playSelect()===true)return;}catch(e){}}
  try{clickAudio.pause();clickAudio.currentTime=0;clickAudio.play().catch(()=>{});}catch(e){}
-},{passive:true,capture:true});
+},{capture:true});
 
 
 
@@ -393,6 +399,97 @@ document.addEventListener('pointerdown',()=>{
 const workTrigger=Q('work-trigger');
 if(workTrigger){
  for(const type of ['pointerup','dblclick'])workTrigger.addEventListener(type,e=>e.stopPropagation());
+}
+
+/* Live clock: one source of truth shared by all internal menus. */
+function updateInMotionClocks(){
+ const now=new Date().toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+ const cover=Q('cover-live-time');if(cover)cover.textContent=now;
+ for(const node of document.querySelectorAll('.live-mini-time,.inmotion-clock-inline'))node.textContent=now;
+}
+function installInnerClocks(){
+ const containers=document.querySelectorAll('.board-topbar,.work-header,.subpage-head,.journal-header,.evening-header,.editor-header,.settings-header');
+ containers.forEach(el=>{
+   if(el.querySelector('.inmotion-clock-inline'))return;
+   const clock=document.createElement('span');clock.className='inmotion-clock-inline';
+   clock.textContent='--:--:--';el.append(clock);
+ });
+}
+installInnerClocks();updateInMotionClocks();setInterval(updateInMotionClocks,1000);
+/* Three permanent categories, separate from date-scoped eight board slots. */
+const GENERAL_NOTES_KEY='inmotion-general-notes-v1';
+const NOTES_CATEGORIES=['general','todo','someday'];
+const NOTES_LABELS={general:'GENERAL NOTES',todo:'TO-DO LIST',someday:'SOMEDAY'};
+let generalNotes={general:[],todo:[],someday:[]},generalNotesOpen=false,notesCategory='';
+try{
+ const stored=JSON.parse(localStorage.getItem(GENERAL_NOTES_KEY)||'{}');
+ for(const kind of NOTES_CATEGORIES)if(Array.isArray(stored[kind]))generalNotes[kind]=stored[kind];
+}catch(e){}
+function saveGeneralNotes(){try{localStorage.setItem(GENERAL_NOTES_KEY,JSON.stringify(generalNotes));}catch(e){toast('Notlar kaydedilemedi: depolamayı kontrol et.');}}
+function refreshNotesCounts(){for(const kind of NOTES_CATEGORIES){const el=Q('notes-count-'+kind);if(el)el.textContent=String(generalNotes[kind].length).padStart(2,'0');}}
+function enterGeneralNotes(){
+ if(generalNotesOpen||state.lockdownActive)return;
+ generalNotesOpen=true;
+ const transition=Q('notes-transition');
+ transition.classList.remove('is-active');void transition.offsetWidth;
+ transition.classList.add('is-active');
+ try{window.NativeAudio?.playNotesTransition?.();}catch(e){}
+ setTimeout(()=>{
+  if(!generalNotesOpen)return;
+  Q('general-notes-page').classList.remove('is-hidden');
+  refreshNotesCounts();updateInMotionClocks();
+  try{window.NativeAudio?.setJournalMode?.('notes');}catch(e){}
+ },490);
+ setTimeout(()=>transition.classList.remove('is-active'),1150);
+}
+function closeGeneralNotes(){
+ if(!generalNotesOpen)return;
+ if(notesCategory){closeNotesCategory();return;}
+ generalNotesOpen=false;
+ Q('general-notes-page').classList.add('is-hidden');
+ try{window.NativeAudio?.setJournalMode?.('');}catch(e){}
+}
+function openNotesCategory(kind){
+ if(!NOTES_CATEGORIES.includes(kind))return;
+ notesCategory=kind;
+ Q('notes-category-title').textContent=NOTES_LABELS[kind];
+ Q('notes-category-panel').hidden=false;
+ Q('notes-new-title').value='';Q('notes-new-body').value='';
+ renderNotesCategory();
+}
+function closeNotesCategory(){notesCategory='';Q('notes-category-panel').hidden=true;refreshNotesCounts();}
+function renderNotesCategory(){
+ const host=Q('notes-items');host.textContent='';
+ const items=generalNotes[notesCategory]||[];
+ if(!items.length){const empty=document.createElement('div');empty.className='notes-empty';empty.textContent='Henüz kayıt yok. İlk notunu aşağıdan ekle.';host.append(empty);}
+ for(const item of items){
+  const card=document.createElement('article');card.className='notes-item'+(item.done?' notes-item-done':'');
+  const heading=document.createElement('div');heading.className='notes-item-heading';
+  const title=document.createElement('strong');title.textContent=item.title||'(Başlıksız)';
+  const date=document.createElement('small');date.textContent=new Date(item.created||Date.now()).toLocaleDateString('tr-TR');
+  heading.append(title,date);
+  const body=document.createElement('textarea');body.value=item.body||'';body.rows=3;body.placeholder='Detaylar...';
+  body.onchange=()=>{item.body=body.value;item.updated=Date.now();saveGeneralNotes();};
+  const actions=document.createElement('div');actions.className='notes-item-actions';
+  if(notesCategory==='todo'){
+   const done=document.createElement('button');done.type='button';done.textContent=item.done?'✓ DONE':'○ COMPLETE';
+   done.onclick=()=>{item.done=!item.done;item.updated=Date.now();saveGeneralNotes();renderNotesCategory();};
+   actions.append(done);
+  }
+  const rename=document.createElement('button');rename.type='button';rename.textContent='EDIT TITLE';
+  rename.onclick=()=>{const updated=prompt('Başlığı güncelle',item.title||'');if(updated===null)return;item.title=updated.trim();saveGeneralNotes();renderNotesCategory();};
+  const remove=document.createElement('button');remove.type='button';remove.textContent='DELETE';
+  remove.onclick=()=>{if(!confirm('Bu not silinsin mi?'))return;generalNotes[notesCategory]=generalNotes[notesCategory].filter(x=>x.id!==item.id);saveGeneralNotes();renderNotesCategory();refreshNotesCounts();};
+  actions.append(rename,remove);card.append(heading,body,actions);host.append(card);
+ }
+}
+function addGeneralNote(){
+ if(!NOTES_CATEGORIES.includes(notesCategory))return;
+ const title=Q('notes-new-title').value.trim(),body=Q('notes-new-body').value.trim();
+ if(!title&&!body){toast('Önce bir not veya başlık gir.');return;}
+ generalNotes[notesCategory].unshift({id:String(Date.now())+'-'+Math.random().toString(36).slice(2),title,body,done:false,created:Date.now(),updated:Date.now()});
+ saveGeneralNotes();Q('notes-new-title').value='';Q('notes-new-body').value='';
+ renderNotesCategory();refreshNotesCounts();
 }
 
 /* IN MOTION 3.2 — unified local attachments.
