@@ -157,6 +157,8 @@ public class MainActivity extends Activity {
 
     private SoundPool soundPool;
     private int selectSoundId = 0;
+    private int cycleTransitionSoundId = 0, notesTransitionSoundId = 0;
+    private volatile boolean cycleTransitionLoaded = false, notesTransitionLoaded = false;
     private int workTransitionSoundId = 0;
     private volatile boolean workTransitionLoaded = false;
     private volatile boolean selectLoaded = false;
@@ -167,6 +169,7 @@ public class MainActivity extends Activity {
     private MediaPlayer workMusic;
     private MediaPlayer eeMusic;
     private MediaPlayer studyMusic;
+    private MediaPlayer notesMusic;
     private String journalMode = "";
     private static final int WORK_PHOTO_PICKER_REQUEST = 7302;
     private static final int PROGRAM_PICKER_REQUEST = 7303;
@@ -192,6 +195,7 @@ public class MainActivity extends Activity {
         syncJournalTrack(workMusic,active&&"work".equals(journalMode));
         syncJournalTrack(eeMusic,active&&"ee".equals(journalMode));
         syncJournalTrack(studyMusic,active&&"study".equals(journalMode));
+        syncJournalTrack(notesMusic,active&&"notes".equals(journalMode));
     }
     private void syncJournalTrack(MediaPlayer player,boolean play) {
         if(player==null)return;
@@ -201,7 +205,7 @@ public class MainActivity extends Activity {
         }catch(Exception e){Log.w("IN_MOTION","Journal soundtrack state",e);}
     }
     private void changeJournalMode(String mode){
-        if(!("work".equals(mode)||"ee".equals(mode)||"study".equals(mode)))mode="";
+        if(!("work".equals(mode)||"ee".equals(mode)||"study".equals(mode)||"notes".equals(mode)))mode="";
         journalMode=mode;
         syncPlayback();syncWorkMusic();
     }
@@ -297,6 +301,8 @@ public class MainActivity extends Activity {
         if(workMusic==null)workMusic=loadJournalSong("work_screen.mp3");
         eeMusic=loadJournalSong("ee_theme.mp3");
         studyMusic=loadJournalSong("study_theme.mp3");
+        notesMusic=loadJournalSong("general_notes_theme.mp3");
+        if(notesMusic==null)notesMusic=loadJournalSong("beneath_the_mask_instrumental.mp3");
 
         soundPool = new SoundPool.Builder().setMaxStreams(6)
             .setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA)
@@ -304,11 +310,13 @@ public class MainActivity extends Activity {
         soundPool.setOnLoadCompleteListener((pool, sampleId, status) -> {
             if (sampleId==selectSoundId && status==0) selectLoaded=true;
             if (sampleId==workTransitionSoundId && status==0) workTransitionLoaded=true;
+            if (sampleId==cycleTransitionSoundId && status==0) cycleTransitionLoaded=true;
+            if (sampleId==notesTransitionSoundId && status==0) notesTransitionLoaded=true;
             if (status != 0) Log.w("IN_MOTION", "Selection sound load error: " + status);
         });
         try {
             AssetFileDescriptor effect;
-            try { effect = getAssets().openFd("select_sound_loud.wav"); }
+            try { effect = getAssets().openFd("menu_select_new.wav"); }
             catch (Exception missing) { effect = getAssets().openFd("select_sound.mp3"); }
             selectSoundId = soundPool.load(effect, 1);
             effect.close();
@@ -316,6 +324,12 @@ public class MainActivity extends Activity {
         try(AssetFileDescriptor fx=getAssets().openFd("work_transition.wav")){
             workTransitionSoundId=soundPool.load(fx,1);
         }catch(Exception e){Log.i("IN_MOTION","Optional Work transition SFX not installed yet");}
+        try(AssetFileDescriptor fx=getAssets().openFd("cycle_transition.wav")){
+            cycleTransitionSoundId=soundPool.load(fx,1);
+        }catch(Exception e){Log.i("IN_MOTION","Cycle SFX not installed yet");}
+        try(AssetFileDescriptor fx=getAssets().openFd("notes_transition.wav")){
+            notesTransitionSoundId=soundPool.load(fx,1);
+        }catch(Exception e){Log.i("IN_MOTION","Notes SFX not installed yet");}
 
     }
 
@@ -812,6 +826,13 @@ public class MainActivity extends Activity {
         }).start();
     }
     public class AudioBridge {
+        @JavascriptInterface public void playCycleTransition(){runOnUiThread(()->{
+            if(soundPool!=null&&cycleTransitionLoaded)soundPool.play(cycleTransitionSoundId,1f,1f,1,0,1f);
+        });}
+        @JavascriptInterface public void playNotesTransition(){runOnUiThread(()->{
+            if(soundPool!=null&&notesTransitionLoaded)soundPool.play(notesTransitionSoundId,1f,1f,1,0,1f);
+        });}
+
         @JavascriptInterface public void playWorkTransition(){
             runOnUiThread(()->{if(soundPool!=null&&workTransitionLoaded&&workTransitionSoundId>0)
                 soundPool.play(workTransitionSoundId,1f,1f,2,0,1f);});
@@ -976,8 +997,8 @@ public class MainActivity extends Activity {
             aiSettings.edit().clear().apply();
         }
         @JavascriptInterface public void askInMotionAI(String payload){
-            if(payload==null||payload.length()>12000){
-                runOnUiThread(()->deliverAI(false,"This request is too long. Shorten the notes or turn off recent conversation sharing."));
+            if(payload==null||payload.length()>524288){
+                runOnUiThread(()->deliverAI(false,"Your on-device knowledge exceeds this Worker request size. Context pagination is needed to use more."));
                 return;
             }
             final String endpoint=aiSettings.getString("endpoint","");
@@ -991,12 +1012,11 @@ public class MainActivity extends Activity {
                 try{
                     JSONObject in=new JSONObject(payload);
                     String question=in.optString("question","");
-                    if(question.trim().isEmpty()||question.length()>1300)throw new IllegalArgumentException("Invalid question");
+                    if(question.trim().isEmpty()||question.length()>25000)throw new IllegalArgumentException("Invalid question");
                     String context=in.optString("context","");
-                    if(context.length()>5100)throw new IllegalArgumentException("Context too long");
+
                     JSONObject body=new JSONObject();body.put("question",question);body.put("context",context);
-                    // Only user-chosen identity settings and bounded, opt-in GPT
-                    // conversation history are forwarded to our private Worker.
+                    // Available app text context and saved chat history are forwarded to the configured private Worker.
                     JSONObject identity=in.optJSONObject("identity");
                     if(identity!=null)body.put("identity",identity);
                     JSONArray history=in.optJSONArray("history");
@@ -1009,7 +1029,7 @@ public class MainActivity extends Activity {
                     conn.setRequestProperty("Content-Type","application/json; charset=utf-8");
                     conn.setRequestProperty("Authorization","Bearer "+token);
                     byte[] bytes=body.toString().getBytes(StandardCharsets.UTF_8);
-                    if(bytes.length>16000)throw new IllegalArgumentException("Request too long. Please share fewer notes.");
+                    if(bytes.length>1048576)throw new IllegalArgumentException("Payload exceeds Worker transport size. Paged memory sync is required.");
                     conn.setFixedLengthStreamingMode(bytes.length);
                     try(OutputStream stream=conn.getOutputStream()){stream.write(bytes);}
                     int status=conn.getResponseCode();
@@ -1018,8 +1038,8 @@ public class MainActivity extends Activity {
                     java.io.ByteArrayOutputStream buffer=new java.io.ByteArrayOutputStream();
                     byte[] chunk=new byte[4096];int total=0,n;
                     try(InputStream source=response){
-                        while((n=source.read(chunk))!=-1 && total<22000){
-                            int allowed=Math.min(n,22000-total);
+                        while((n=source.read(chunk))!=-1 && total<131072){
+                            int allowed=Math.min(n,131072-total);
                             buffer.write(chunk,0,allowed);total+=allowed;
                         }
                     }
@@ -1259,6 +1279,7 @@ public class MainActivity extends Activity {
         if(workMusic!=null){workMusic.release();workMusic=null;}
         if(eeMusic!=null){eeMusic.release();eeMusic=null;}
         if(studyMusic!=null){studyMusic.release();studyMusic=null;}
+        if(notesMusic!=null){notesMusic.release();notesMusic=null;}
         if(bootSound!=null){bootSound.release();bootSound=null;}
         if(eveningMusic!=null){eveningMusic.release();eveningMusic=null;}
         if (music != null) { music.release(); music = null; }
