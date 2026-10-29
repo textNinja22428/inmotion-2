@@ -404,7 +404,7 @@ if(workTrigger){
 /* Live clock: one source of truth shared by all internal menus. */
 function updateInMotionClocks(){
  const now=new Date().toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
- const cover=Q('cover-live-time');if(cover)cover.textContent=now;
+ for(const id of ['cover-live-time','board-live-time']){const clock=Q(id);if(clock)clock.textContent=now;}
  for(const node of document.querySelectorAll('.live-mini-time,.inmotion-clock-inline'))node.textContent=now;
 }
 function installInnerClocks(){
