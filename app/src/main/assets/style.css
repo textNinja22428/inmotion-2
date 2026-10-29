@@ -1351,3 +1351,30 @@ body.theme-dark .song-next{color:#f6ebd9}
 .notes-compose{display:flex;flex-direction:column;gap:9px;border-top:1px solid #c9b691;padding-top:14px}
 .notes-compose textarea{min-height:79px;max-height:130px}
 .agent-memory-mode{display:inline-block;font:800 11px Arial,sans-serif;color:#c29e63;letter-spacing:.6px}
+
+/* Board footer relocation: display LOCAL TIME and DAILY & GENERAL NOTES
+   within the white space beneath the eight-section agenda, not over cover art. */
+#cover-page .cover-utility-dock{display:none!important}
+#board-page .cover-utility-dock{
+ position:absolute;z-index:12;
+ left:6%;right:6%;bottom:calc(14px + env(safe-area-inset-bottom));
+ height:64px;display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.5fr);
+ align-items:stretch;gap:10px;max-width:540px;margin:0 auto
+}
+#board-page .cover-utility-clock,#board-page .general-notes-launch{
+ background:#fffdf8!important;border:1px solid #c6aa75a6;border-radius:13px;
+ box-shadow:0 3px 11px #2020200e
+}
+#board-page .cover-utility-clock strong{font-size:clamp(17px,4.6vw,22px)}
+#board-page #board-stage{
+ width:min(96vw,calc((100dvh - 280px) * 1055 / 1490))!important;
+ top:calc(50% + 48px)!important
+}
+@media(max-height:735px){
+ #board-page #board-stage{
+  width:min(95vw,calc((100dvh - 275px) * 1055 / 1490))!important;
+  top:calc(50% + 45px)!important
+ }
+ #board-page .cover-utility-dock{height:56px;bottom:calc(10px + env(safe-area-inset-bottom))}
+ #board-page .general-notes-launch strong{font-size:clamp(9px,2.7vw,12px)}
+}
