@@ -1354,7 +1354,7 @@ body.theme-dark .song-next{color:#f6ebd9}
 
 /* Board footer relocation: display LOCAL TIME and DAILY & GENERAL NOTES
    within the white space beneath the eight-section agenda, not over cover art. */
-#cover-page .cover-utility-dock{display:none!important}
+/* Both cover and board retain their own utility docks. */
 #board-page .cover-utility-dock{
  position:absolute;z-index:12;
  left:6%;right:6%;bottom:calc(14px + env(safe-area-inset-bottom));
