@@ -1,0 +1,30 @@
+name: Kanji Combat stroke data
+on:
+  push:
+    branches: [kanji-combat-standalone]
+    paths: ['.github/workflows/kanji-stroke-data.yml']
+jobs:
+  data:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download public licensed stroke data
+        run: |
+          git clone --depth 1 https://github.com/KanjiVG/kanjivg.git /tmp/kanjivg
+          python - <<'PY'
+          import json, pathlib, xml.etree.ElementTree as ET
+          chars='一七万丈三上下両並中丸久乗九乳事二五交京人今仕休会伯低住体何作使供便個借停傘働元兄先入全八公六円冊再写冬冷出分切初利到前勉動勢勤北匹医十千午半南危卵厚去友取口古台右号同名向吸吹呂味呼咲問喫四回困図国園土地堂塩声売夏夕外多夜大天太夫失奥女好妹姉始婚嫌子字学安官室家宿寒寝封小少局屋山川左差布帯帰帽平年広店度座庫庭廊建弁引弟弱強弾当待後徒御忘忙悪意戸所手押持掃授携撮教散文料新方旅族日早明易映春昨昼時晩晴暇暑暖暗曇曜曲書月有服朝木末本机村来杯東枚果校棚業楽構横橋機次欲歌止歩歯歳死段母毎気水汁汚池泳洋洗海消涼渡温港漢漫濯火灰点無煩熱父牛物犬狭猫玄球理瓶甘生男町画留番疲病痛発登白百皆皿目真眼着知短砂磨礼社祖私秋秒空窓立章符筆筒答箱糖紅紙細終結絵続緑緒締練置習者耳聞肉背脱自色花若英茶荷菓菜葉蔵薄薬行西要見覚親角言計話誌誕語読誰警豚財買貸貼賑質赤走起趣足車転軽辛辞辺近返速週遅遊運道達違遠邪部郵都酒重野金鉄鉛銀鏡長門閉開間関阪降院除階隣雑難雨雪零電青静靴韓音頭頼題願風飛食飯飲飴館駅高魚鳥鳴鶏黄黒鼻'
+          out={}
+          for c in chars:
+              p=pathlib.Path('/tmp/kanjivg/kanji')/f'{ord(c):05x}.svg'
+              if not p.exists(): continue
+              root=ET.parse(p).getroot()
+              paths=[e.attrib['d'] for e in root.iter() if e.tag.endswith('}path') and '-s' in e.get('id','') and 'd' in e.attrib]
+              if paths: out[c]=paths
+          pathlib.Path('strokes.js').write_text('/* KanjiVG © Ulrich Apel and contributors, CC BY-SA 3.0; SVG path extraction. https://kanjivg.tagaini.net/ */\nwindow.KC_STROKES='+json.dumps(out,ensure_ascii=False,separators=(',',':'))+';\n',encoding='utf-8')
+          print('Characters:',len(out))
+          assert len(out)==len(chars)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kanji-strokes
+          path: strokes.js
