@@ -1,0 +1,45 @@
+name: Kanji Combat sentence corpus
+on:
+  push:
+    branches: [kanji-combat-standalone]
+    paths: ['.github/workflows/kanji-sentence-data.yml']
+jobs:
+  data:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Japanese-indexed bilingual sentences and component readings
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p corpus
+          cd corpus
+          curl -fL --retry 3 https://downloads.tatoeba.org/exports/jpn_indices.tar.bz2 -o indices.tar.bz2
+          tar -xjf indices.tar.bz2
+          curl -fL --retry 3 https://downloads.tatoeba.org/exports/per_language/jpn/jpn_sentences.tsv.bz2 -o jpn.tsv.bz2
+          curl -fL --retry 3 https://downloads.tatoeba.org/exports/per_language/eng/eng_sentences.tsv.bz2 -o eng.tsv.bz2
+          curl -fL --retry 3 https://raw.githubusercontent.com/kanjialive/kanji-data-media/master/language-data/japanese-radicals.csv -o radicals.csv
+          git clone --depth 1 https://github.com/evanclan/OpenJLPT.git /tmp/openjlpt
+          python - <<'PY'
+          import json,pathlib,bz2
+          p=next(pathlib.Path('.').glob('jpn_indices.csv'))
+          jids=set(); eids=set()
+          for l in p.open():
+              a=l.rstrip('\n').split('\t',2)
+              if len(a)==3: jids.add(a[0]);eids.add(a[1])
+          for name,ids in [('jpn',jids),('eng',eids)]:
+              with bz2.open(name+'.tsv.bz2','rt') as f, open(name+'.tsv','w') as out:
+                  for l in f:
+                      if l.split('\t',1)[0] in ids: out.write(l)
+          data={}
+          for p in pathlib.Path('/tmp/openjlpt/data/json/kanji').glob('*.json'):
+              for k in json.loads(p.read_text()):
+                  if k.get('character'):data[k['character']]=k
+          pathlib.Path('readings.json').write_text(json.dumps(data,ensure_ascii=False))
+          print(len(jids),len(eids),len(data))
+          PY
+          rm -f *.bz2
+          ls -lh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kc-sentence-corpus
+          path: corpus/
