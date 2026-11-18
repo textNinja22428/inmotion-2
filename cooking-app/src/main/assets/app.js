@@ -12,6 +12,21 @@ const moodOptions=[['🤩','Amazing'],['😊','Happy'],['😌','Cozy'],['😐','
 let rotations=loadRotations(),entries=[],page='home',editingEntry=null,pendingFiles=[],editingRotationId=null,selectionMood='😊',db=null,toastTimer=null;
 function loadRotations(){try{let data=JSON.parse(localStorage.getItem(STORAGE_KEY));return Array.isArray(data)&&data.length?data:structuredClone(DEFAULTS)}catch{return JSON.parse(JSON.stringify(DEFAULTS))}}
 function saveRotations(){localStorage.setItem(STORAGE_KEY,JSON.stringify(rotations))}
+
+function displayedMeal(r){
+ if(r.id==='comfort' && r.tweaks.includes('Ravioli Mantı'))return 'Ravioli Mantı';
+ if(r.id==='fire' && r.tweaks.includes('Napoletana sauce'))return 'Steak Penne Napoletana';
+ return r.meal;
+}
+function displayedIngredients(r){
+ let v=r.ingredients||'';
+ if(r.id==='comfort'&&r.tweaks.includes('Ravioli Mantı'))v=v.replace('Lezzet Mantı Gurme Saray Mantı','Ravioli Mantı');
+ if(r.id==='fire'&&r.tweaks.includes('Napoletana sauce'))v=v.replace('Barilla Arrabbiata (or Napoletana)','Barilla Napoletana');
+ if(r.tweaks.includes('Beef tenderloin'))v=v.replaceAll('sirloin','tenderloin');
+ let extras=r.tweaks.filter(t=>!['Ravioli Mantı','Napoletana sauce','Beef tenderloin'].includes(t));
+ return v+(extras.length?' • Added: '+extras.join(', '):'');
+}
+
 function esc(str){return String(str??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;')}
 function uid(){return 'id_'+Date.now()+'_'+Math.random().toString(36).slice(2,8)}
 function today(){let d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10)}
@@ -26,10 +41,10 @@ function setPage(next){page=next;document.querySelectorAll('.page').forEach(x=>x
 function closeModal(){const wrap=$('modalWrap');wrap.classList.remove('show');wrap.setAttribute('aria-hidden','true');$('modal').innerHTML='';editingEntry=null;pendingFiles=[]}
 function showModal(html){$('modal').innerHTML=html;$('modalWrap').classList.add('show');$('modalWrap').setAttribute('aria-hidden','false')}
 function modalHeader(title,desc=''){return `<div class="modal-top"><div><span class="eyebrow">COOKING ROTATIONS</span><h2>${title}</h2>${desc?`<p class="sub">${desc}</p>`:''}</div><button class="modal-close" onclick="closeModal()" aria-label="Close">×</button></div>`}
-function renderHome(){const list=$('rotationList');$('rotationCount').textContent=rotations.length;list.innerHTML=rotations.map((r,i)=>`<div class="rotation-card" onclick="openRotation('${esc(r.id)}')" style="--accent:${esc(r.accent)};--cardbg:${esc(r.bg)}"><div class="rotation-icon">${esc(r.icon)}</div><div class="rotation-info"><small class="rotation-number">ROTATION ${String(i+1).padStart(2,'0')}</small><b>${esc(r.name)}</b><p>🍽 ${esc(r.meal)}<br/>🍨 ${esc(r.dessert)} · 🥤 ${esc(r.drink)}</p></div><span class="chevron">›</span></div>`).join('');let last=entries[0];$('homeInsight').innerHTML=`<span>💛</span><div><strong>${last?'Your last kitchen memory':'Every dinner is a little celebration.'}</strong><p>${last?esc((rotations.find(x=>x.id===last.rotationId)?.name||last.rotationName)+' • '+prettyDate(last.date)):'Tap a rotation to make it yours, then journal the moment.'}</p></div>`}
+function renderHome(){const list=$('rotationList');$('rotationCount').textContent=rotations.length;list.innerHTML=rotations.map((r,i)=>`<div class="rotation-card" onclick="openRotation('${esc(r.id)}')" style="--accent:${esc(r.accent)};--cardbg:${esc(r.bg)}"><div class="rotation-icon">${esc(r.icon)}</div><div class="rotation-info"><small class="rotation-number">ROTATION ${String(i+1).padStart(2,'0')}</small><b>${esc(r.name)}</b><p>🍽 ${esc(displayedMeal(r))}<br/>🍨 ${esc(r.dessert)} · 🥤 ${esc(r.drink)}</p></div><span class="chevron">›</span></div>`).join('');let last=entries[0];$('homeInsight').innerHTML=`<span>💛</span><div><strong>${last?'Your last kitchen memory':'Every dinner is a little celebration.'}</strong><p>${last?esc((rotations.find(x=>x.id===last.rotationId)?.name||last.rotationName)+' • '+prettyDate(last.date)):'Tap a rotation to make it yours, then journal the moment.'}</p></div>`}
 window.openRotation=function(id){const r=rotations.find(x=>x.id===id);if(!r)return;showModal(`${modalHeader(esc(r.name),'Your meal, dessert, and all the little touches.')}
 <div class="detail-visual" style="background:linear-gradient(135deg,${esc(r.bg)},#f6e4e9)"><span class="food-icon">${esc(r.icon)}</span><div><span class="eyebrow">TONIGHT'S MENU</span><br/><strong>${esc(r.name)}</strong></div></div>
-<div class="detail-row"><span>🍽️</span><div><b>${esc(r.meal)}</b><small>${esc(r.ingredients)}</small></div></div>
+<div class="detail-row"><span>🍽️</span><div><b>${esc(displayedMeal(r))}</b><small>${esc(displayedIngredients(r))}</small></div></div>
 <div class="detail-row"><span>🍨</span><div><b>${esc(r.dessert)}</b><small>${esc(r.dessertNotes)}</small></div></div>
 <div class="detail-row"><span>🥤</span><div><b>${esc(r.drink)}</b></div></div>
 <div class="detail-row"><span>✨</span><div><b>Palate pairing</b><small>${esc(r.palate)}</small></div></div>
