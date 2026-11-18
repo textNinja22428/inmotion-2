@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/><meta name="theme-color" content="#291a26"/><title>Cooking Rotations</title><link rel="stylesheet" href="style.css"/></head>
+<body>
+<div id="splash" class="splash" aria-label="Opening Cooking Rotations"><img src="splash.jpg" alt="Anime friends having fun cooking"/><div class="splash-overlay"><div class="splash-title">Cooking <em>Rotations</em></div><div class="splash-caption">A little joy, one meal at a time.</div><div class="splash-loader"><span></span></div><button class="skip-splash" onclick="skipSplash()">Skip ›</button></div></div>
+<div class="video-wall"><video id="ambient" autoplay muted playsinline loop preload="metadata"><source src="1118.mp4" type="video/mp4"/></video><div class="video-shade"></div></div>
+<div class="app-shell">
+<header class="topbar"><div class="brand-mark">✿</div><div class="brand-text"><strong>Cooking Rotations</strong><small>MAKE DINNER A HAPPY RITUAL</small></div><button class="round icon" id="settingsButton" title="Settings">⚙</button></header>
+<main id="pages">
+<section id="home" class="page active">
+ <div class="hero glass"><div><span class="eyebrow">YOUR LITTLE KITCHEN ✨</span><h1>What's cooking<br/><i>tonight?</i></h1><p>Five feel-good meals. Zero overthinking.</p></div><div class="hero-emoji">🍳</div><div class="hero-actions"><button class="primary" id="surpriseMe">✦ Pick for me</button><button class="ghost" id="quickJournal">＋ Journal entry</button></div></div>
+ <div class="section-heading"><div><span class="eyebrow">THE MENU</span><h2>My Rotations <span id="rotationCount">5</span></h2></div><button class="text-button" id="addRotation">＋ New</button></div>
+ <div id="rotationList" class="rotation-list"></div>
+ <div class="mini-insight glass" id="homeInsight"></div>
+</section>
+<section id="journal" class="page"><div class="page-heading"><span class="eyebrow">MEMORIES FROM THE KITCHEN</span><h1>Meal Journal <span>📔</span></h1><p>Collect meals and moments, not perfection.</p></div><button class="wide primary" id="journalNew">＋ Add today's cooking</button><div id="journalList" class="journal-list"></div></section>
+<section id="gallery" class="page"><div class="page-heading"><span class="eyebrow">THE LITTLE MOMENTS</span><h1>My Gallery <span>🌷</span></h1><p>Photos, videos, and food that made you smile.</p></div><div id="galleryGrid" class="gallery-grid"></div></section>
+<section id="stats" class="page"><div class="page-heading"><span class="eyebrow">PROGRESS WITHOUT PRESSURE</span><h1>Kitchen Story <span>⭐</span></h1><p>Every meal counts. Keep the joy.</p></div><div id="statsContent"></div></section>
+</main>
+<nav class="tabbar"><button class="tab active" data-tab="home"><span>⌂</span><small>Home</small></button><button class="tab" data-tab="journal"><span>▤</span><small>Journal</small></button><button class="tab addtab" id="floatingAdd"><span>＋</span></button><button class="tab" data-tab="gallery"><span>▦</span><small>Gallery</small></button><button class="tab" data-tab="stats"><span>✧</span><small>Story</small></button></nav>
+</div>
+<div class="modal-wrap" id="modalWrap" aria-hidden="true"><div class="modal-shade" id="modalShade"></div><div class="modal" id="modal"></div></div>
+<div class="toast" id="toast"></div>
+<input id="importFile" type="file" accept="application/json" hidden/>
+<script src="app.js"></script></body></html>

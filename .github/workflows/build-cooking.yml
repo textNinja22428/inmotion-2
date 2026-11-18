@@ -1,0 +1,40 @@
+name: Build Cooking Rotations APK
+on:
+  workflow_dispatch:
+  push:
+    branches: [cooking-rotations-standalone]
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK
+        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Keep signing key stable
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: cooking-rotations-debug-v1
+      - name: Create signing key if needed
+        run: |
+          mkdir -p ~/.android
+          if [ ! -s ~/.android/debug.keystore ]; then
+            keytool -genkeypair -keystore ~/.android/debug.keystore -storepass android -keypass android -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 36500 -dname 'CN=Cooking Rotations,O=Personal,C=TR'
+          fi
+      - name: Build Android APK
+        run: gradle --no-daemon :cooking-app:assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Cooking_Rotations_APK
+          path: cooking-app/build/outputs/apk/debug/cooking-app-debug.apk
+          if-no-files-found: error
