@@ -13,6 +13,9 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
+import androidx.webkit.WebViewAssetLoader;
 import android.webkit.ValueCallback;
 import android.net.Uri;
 
@@ -36,11 +39,18 @@ public final class MainActivity extends Activity {
     settings.setJavaScriptEnabled(true);
     settings.setDomStorageEnabled(true);
     settings.setDatabaseEnabled(true);
-    settings.setAllowFileAccess(true);
+    settings.setAllowFileAccess(false);
     settings.setAllowContentAccess(true);
     settings.setMediaPlaybackRequiresUserGesture(false);
     settings.setDefaultTextEncodingName("UTF-8");
-    webView.setWebViewClient(new WebViewClient());
+    final WebViewAssetLoader assetsLoader = new WebViewAssetLoader.Builder()
+      .addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this))
+      .build();
+    webView.setWebViewClient(new WebViewClient() {
+      @Override public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+        return assetsLoader.shouldInterceptRequest(request.getUrl());
+      }
+    });
     webView.setWebChromeClient(new WebChromeClient() {
       @Override public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback, FileChooserParams params) {
         if(fileCallback!=null)fileCallback.onReceiveValue(null);
@@ -56,7 +66,7 @@ public final class MainActivity extends Activity {
       }
     });
     setContentView(webView);
-    webView.loadUrl("file:///android_asset/index.html");
+    webView.loadUrl("https://appassets.androidplatform.net/assets/index.html");
     try {
       AssetFileDescriptor afd = getAssets().openFd("jjba_notification.mp3");
       openingAudio = new MediaPlayer();
