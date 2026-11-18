@@ -4,7 +4,7 @@
 <div id="splash" class="splash" aria-label="Opening Cooking Rotations"><img src="splash.jpg" alt="Anime friends having fun cooking"/><div class="splash-overlay"><div class="splash-title">Cooking <em>Rotations</em></div><div class="splash-caption">A little joy, one meal at a time.</div><div class="splash-loader"><span></span></div><button class="skip-splash" onclick="skipSplash()">Skip ›</button></div></div>
 <div class="video-wall"><video id="ambient" autoplay muted playsinline loop preload="metadata"><source src="1118.mp4" type="video/mp4"/></video><div class="video-shade"></div></div>
 <div class="app-shell">
-<header class="topbar"><div class="brand-mark">✿</div><div class="brand-text"><strong>Cooking Rotations</strong><small>MAKE DINNER A HAPPY RITUAL</small></div><button class="round icon" id="settingsButton" title="Settings">⚙</button></header>
+<header class="topbar"><div class="brand-mark"><img src="brand.png" alt="Cooking Rotations icon"/></div><div class="brand-text"><strong>Cooking Rotations</strong><small>MAKE DINNER A HAPPY RITUAL</small></div><button class="round icon" id="settingsButton" title="Settings">⚙</button></header>
 <main id="pages">
 <section id="home" class="page active">
  <div class="hero glass"><div><span class="eyebrow">YOUR LITTLE KITCHEN ✨</span><h1>What's cooking<br/><i>tonight?</i></h1><p>Five feel-good meals. Zero overthinking.</p></div><div class="hero-emoji">🍳</div><div class="hero-actions"><button class="primary" id="surpriseMe">✦ Pick for me</button><button class="ghost" id="quickJournal">＋ Journal entry</button></div></div>
@@ -14,11 +14,24 @@
 </section>
 <section id="journal" class="page"><div class="page-heading"><span class="eyebrow">MEMORIES FROM THE KITCHEN</span><h1>Meal Journal <span>📔</span></h1><p>Collect meals and moments, not perfection.</p></div><button class="wide primary" id="journalNew">＋ Add today's cooking</button><div id="journalList" class="journal-list"></div></section>
 <section id="gallery" class="page"><div class="page-heading"><span class="eyebrow">THE LITTLE MOMENTS</span><h1>My Gallery <span>🌷</span></h1><p>Photos, videos, and food that made you smile.</p></div><div id="galleryGrid" class="gallery-grid"></div></section>
+<section id="music" class="page">
+ <div class="page-heading"><span class="eyebrow">YOUR KITCHEN SOUNDTRACK ✨</span><h1>Cooking Radio <span>🎶</span></h1><p>Your music, your evening. Keep it simple.</p></div>
+ <div class="music-hero glass"><span class="music-doodle">🎵</span><div><span class="eyebrow">NOW PLAYING</span><h2 id="musicNowTitle">Nothing playing yet</h2><p id="musicNowSub">Add your favorite tracks to get cooking.</p></div></div>
+ <div class="music-controls glass">
+  <input type="range" min="0" max="1000" value="0" id="musicSeek" aria-label="Seek playback"/>
+  <div class="music-clock"><span id="musicElapsed">0:00</span><span id="musicDuration">0:00</span></div>
+  <div class="music-actions"><button id="musicShuffle" title="Shuffle">⇄</button><button id="musicPrev" title="Previous">⏮</button><button id="musicPlay" class="music-main-button" title="Play or pause">▶</button><button id="musicNext" title="Next">⏭</button><button id="musicRepeat" title="Repeat current song">↻</button></div>
+ </div>
+ <div class="music-switch"><button id="musicLocalTab" class="active">♫ On my phone</button><button id="musicYoutubeTab">▶ YouTube links</button></div>
+ <div id="localMusicPanel" class="music-panel"><button class="wide primary" id="musicImport">＋ Add audio from phone</button><div id="localMusicList"></div><p class="music-hint">MP3, M4A and other supported local audio. Files remain on your phone. We save access to the songs you select.</p></div>
+ <div id="youtubeMusicPanel" class="music-panel" hidden><div class="music-add-url glass"><label class="field"><span>YouTube video link</span><input type="url" id="youtubeUrl" placeholder="https://youtu.be/..."/></label><label class="field"><span>Label (optional)</span><input type="text" id="youtubeLabel" maxlength="80" placeholder="Tonight's cooking song"/></label><button class="wide primary" id="youtubeAdd">＋ Save YouTube link</button></div><div id="youtubePlayerContainer"></div><div id="youtubeLinks"></div><p class="music-hint">YouTube videos play inside their official visible player, with an internet connection. Audio extraction or background-only YouTube playback is not supported.</p></div>
+</section>
 <section id="stats" class="page"><div class="page-heading"><span class="eyebrow">PROGRESS WITHOUT PRESSURE</span><h1>Kitchen Story <span>⭐</span></h1><p>Every meal counts. Keep the joy.</p></div><div id="statsContent"></div></section>
 </main>
-<nav class="tabbar"><button class="tab active" data-tab="home"><span>⌂</span><small>Home</small></button><button class="tab" data-tab="journal"><span>▤</span><small>Journal</small></button><button class="tab addtab" id="floatingAdd"><span>＋</span></button><button class="tab" data-tab="gallery"><span>▦</span><small>Gallery</small></button><button class="tab" data-tab="stats"><span>✧</span><small>Story</small></button></nav>
+<nav class="tabbar"><button class="tab active" data-tab="home"><span>⌂</span><small>Home</small></button><button class="tab" data-tab="journal"><span>▤</span><small>Journal</small></button><button class="tab addtab" id="floatingAdd"><span>＋</span></button><button class="tab" data-tab="gallery"><span>▦</span><small>Gallery</small></button><button class="tab" data-tab="music"><span>♫</span><small>Music</small></button><button class="tab" data-tab="stats"><span>✧</span><small>Story</small></button></nav>
 </div>
 <div class="modal-wrap" id="modalWrap" aria-hidden="true"><div class="modal-shade" id="modalShade"></div><div class="modal" id="modal"></div></div>
+<div class="mini-music" id="miniMusic" hidden><span class="mini-musical">♫</span><button id="miniMusicTitle" class="mini-name">Cooking Radio</button><button id="miniPrev" class="mini-icon" title="Previous track">‹</button><button id="miniToggle" class="mini-icon" title="Play or pause">▶</button><button id="miniNext" class="mini-icon" title="Next track">›</button></div>
 <div class="toast" id="toast"></div>
 <input id="importFile" type="file" accept="application/json" hidden/>
-<script src="app.js"></script></body></html>
+<script src="app.js"></script><script src="music.js"></script></body></html>
