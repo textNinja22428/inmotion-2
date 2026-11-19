@@ -45,3 +45,23 @@
 .mini-musical{font-size:20px;color:#ffcd7e}
 .mini-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:white;background:none;border:0;text-align:left;font-weight:850}
 .mini-icon{width:31px;height:30px;background:#ffffff2c;border:0;border-radius:10px;color:white;font-size:19px}
+
+/* v1.2 — persistent, policy-compliant visible YouTube dock. Keep actual iframe >=200x200. */
+.youtube-dock[hidden]{display:none!important}
+.youtube-dock{position:fixed;z-index:13;bottom:calc(75px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);width:min(calc(100% - 16px),560px);padding:8px 10px 9px;background:#34223feb;border:1px solid #f7d9b086;border-radius:19px 19px 0 0;box-shadow:0 -12px 35px #170e1b9a;color:#fff;backdrop-filter:blur(20px)}
+.youtube-dock-head{min-height:38px;display:flex;gap:8px;align-items:center;padding:0 3px 7px}
+.youtube-live-dot{color:#ffd38a;font-size:15px}
+.youtube-dock-title{flex:1;min-width:0;font-size:12px;font-weight:850;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.youtube-dock-action{display:grid;place-items:center;width:32px;height:31px;flex-shrink:0;color:#fff;font-size:22px;border:1px solid #ffffff55;border-radius:10px;background:#ffffff20}
+.youtube-dock-action:active{transform:scale(.96)}
+.youtube-dock-player{background:#160b1a;border-radius:12px;overflow:hidden}
+.youtube-dock-player .youtube-frame{height:207px;min-height:200px;padding:0;margin:0;border-radius:12px;box-shadow:none}
+.youtube-dock-player .youtube-frame iframe{display:block;width:100%;height:100%;border:0}
+.youtube-dock-footer{display:flex;justify-content:space-between;gap:8px;align-items:center;min-height:24px;margin-top:5px;font-size:10px;color:#f4dbeb}
+.youtube-dock-footer a{color:#ffdd9e;white-space:nowrap;text-decoration:underline;text-underline-offset:2px}
+.youtube-docked .page.active{padding-bottom:calc(355px + env(safe-area-inset-bottom))}
+.youtube-status[hidden]{display:none!important}
+.youtube-status{color:#514058;background:#fff9f0;border-radius:12px;padding:12px;font-size:12px;line-height:1.5;margin:8px 0 14px}
+.youtube-docked .modal{bottom:calc(349px + env(safe-area-inset-bottom));max-height:max(200px,calc(100dvh - 365px));border-radius:20px}
+.youtube-docked .toast{bottom:calc(355px + env(safe-area-inset-bottom))}
+@media(max-height:660px){.youtube-dock-player .youtube-frame{height:200px}.youtube-docked .modal{bottom:calc(338px + env(safe-area-inset-bottom));max-height:calc(100dvh - 355px)}}

@@ -13,15 +13,15 @@ window.onNativeMusicSnapshot=function(data){musicState=data||musicState;renderMu
 window.onNativeMusicMessage=function(message){toast(message)};
 function renderMusicControls(){
  const track=playingTrack(),playing=!!musicState.playing;
- $('musicNowTitle').textContent=track?track.title:(youtubeActive?'YouTube video':'Nothing playing yet');
- $('musicNowSub').textContent=track?'Your local kitchen soundtrack 🎶':(youtubeActive?'YouTube player is open below':'Add your favorite tracks to get cooking.');
+ $('musicNowTitle').textContent=youtubeActive?(youtubeTracks.find(t=>t.id===youtubeActive)?.title||'YouTube video'):(track?track.title:'Nothing playing yet');
+ $('musicNowSub').textContent=youtubeActive?'Playing in the always-visible video dock. Browse any tab ♪':(track?'Your local kitchen soundtrack 🎶':'Add your favorite tracks to get cooking.');
  $('musicPlay').textContent=playing?'❚❚':'▶';
  $('musicShuffle').classList.toggle('selected',!!musicState.shuffle);
  $('musicRepeat').classList.toggle('selected',!!musicState.repeat);
  $('musicElapsed').textContent=fmtMusic(musicState.position);
  $('musicDuration').textContent=fmtMusic(musicState.duration);
  if(!seekFingerDown)$('musicSeek').value=musicState.duration?Math.round(1000*musicState.position/musicState.duration):0;
- $('miniMusic').hidden=!track;
+ $('miniMusic').hidden=!track || !!youtubeActive;
  if(track){$('miniMusicTitle').textContent=track.title;$('miniToggle').textContent=playing?'❚❚':'▶'}
 }
 function renderLocalMusicList(){
@@ -40,7 +40,7 @@ function selectMusicTab(which){
  $('musicYoutubeTab').classList.toggle('active',which==='youtube');
  $('localMusicPanel').hidden=which!=='local';
  $('youtubeMusicPanel').hidden=which!=='youtube';
- if(which!=='youtube')closeYoutubePlayer();
+ // Switching the library sub-tab never destroys the active YouTube iframe.
 }
 function extractYoutubeId(s){try{
  let u=new URL(s.trim());let host=u.hostname.toLowerCase().replace(/^www\./,'');let id='';
@@ -58,17 +58,53 @@ function renderYoutubeList(){
  el.querySelectorAll('[data-yt-delete]').forEach(x=>x.onclick=()=>{youtubeTracks=youtubeTracks.filter(y=>y.id!==x.dataset.ytDelete);saveYoutubeTracks();if(youtubeActive===x.dataset.ytDelete)closeYoutubePlayer();renderYoutubeList()});
 }
 function playYoutube(id){
- if(!youtubeTracks.find(x=>x.id===id))return;
- // Stop the native audio player so the two music sources do not compete.
- musicStopLocal();youtubeActive=id;
- const container=$('youtubePlayerContainer');
- // YouTube is shown visibly via its official embedded player; audio extraction is not performed.
- container.innerHTML='<div class="youtube-frame"><iframe title="YouTube video player" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen loading="eager" src="https://www.youtube.com/embed/'+id+'?playsinline=1&rel=0&autoplay=1"></iframe></div><a class="open-youtube" href="https://www.youtube.com/watch?v='+id+'" target="_blank" rel="noopener">If the embed is unavailable, open in YouTube ↗</a>';
+ const item=youtubeTracks.find(x=>x.id===id);
+ if(!item)return;
+ // Selecting the same item must not reload the iframe (which restarts its song).
+ if(youtubeActive===id && $('youtubeDockPlayer').querySelector('iframe')){
+  $('youtubeDock').hidden=false;
+  document.body.classList.add('youtube-docked');
+  return;
+ }
+ // The native audio player and YouTube should never compete for the speaker.
+ musicStopLocal();
+ youtubeActive=id;
+ const dock=$('youtubeDock');
+ $('youtubeDockTitle').textContent=item.title;
+ $('youtubeOpenExternal').href=item.url;
+ // This official video stays mounted in the DOM even if the user navigates to Home/Journal/Gallery.
+ // The visible iframe is deliberately >=200px in each dimension; no background-only playback.
+ const iframe=document.createElement('iframe');
+ iframe.title='YouTube video: '+item.title;
+ iframe.setAttribute('allow','autoplay; encrypted-media; picture-in-picture; fullscreen');
+ iframe.setAttribute('referrerpolicy','strict-origin-when-cross-origin');
+ iframe.setAttribute('allowfullscreen','');
+ iframe.setAttribute('loading','eager');
+ iframe.src='https://www.youtube.com/embed/'+id+'?playsinline=1&rel=0&autoplay=1';
+ const frame=document.createElement('div');
+ frame.className='youtube-frame';
+ frame.appendChild(iframe);
+ $('youtubeDockPlayer').replaceChildren(frame);
+ dock.hidden=false;
+ document.body.classList.add('youtube-docked');
+ updateYoutubeStatus();
  renderYoutubeList();renderMusicControls();
+}
+function updateYoutubeStatus(){
+ const hint=$('youtubePlayerContainer');
+ if(!hint)return;
+ hint.hidden=!youtubeActive;
+ if(youtubeActive)hint.textContent='♪ YouTube is open in the persistent video dock. Switch to any app tab — your video stays visible and keeps its place.';
 }
 function closeYoutubePlayer(){
  if(!youtubeActive)return;
- youtubeActive='';$('youtubePlayerContainer').innerHTML='';renderYoutubeList();renderMusicControls();
+ youtubeActive='';
+ // Explicit stop or switching to local audio can tear down the embed.
+ $('youtubeDockPlayer').replaceChildren();
+ $('youtubeDock').hidden=true;
+ document.body.classList.remove('youtube-docked');
+ updateYoutubeStatus();
+ renderYoutubeList();renderMusicControls();
 }
 function saveYoutube(){const url=$('youtubeUrl').value.trim(),id=extractYoutubeId(url);
  if(!id){toast('Use a YouTube video link (not a playlist)');return}
@@ -91,10 +127,10 @@ function initMusic(){
  $('miniPrev').onclick=()=>nMusic('previous');$('miniNext').onclick=()=>nMusic('next');
  $('miniMusicTitle').onclick=()=>setPage('music');
  $('youtubeAdd').onclick=saveYoutube;
- renderYoutubeList();renderLocalMusicList();renderMusicControls();
+ $('youtubeDockClose').onclick=closeYoutubePlayer;
+ $('youtubeDockMusic').onclick=()=>setPage('music');
+ updateYoutubeStatus();renderYoutubeList();renderLocalMusicList();renderMusicControls();
  if(window.NativeMusic)setTimeout(()=>NativeMusic.getSnapshot(),350);
 }
-// A YouTube embed must not continue playing invisibly on other pages.
-const originalSetPage=setPage;
-setPage=function(next){if(next!=='music' && youtubeActive)closeYoutubePlayer();originalSetPage(next)};
+// Navigation never removes the persistent visible player; only explicit stop does.
 document.addEventListener('DOMContentLoaded',initMusic);

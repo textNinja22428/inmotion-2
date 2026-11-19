@@ -24,12 +24,23 @@
  </div>
  <div class="music-switch"><button id="musicLocalTab" class="active">♫ On my phone</button><button id="musicYoutubeTab">▶ YouTube links</button></div>
  <div id="localMusicPanel" class="music-panel"><button class="wide primary" id="musicImport">＋ Add audio from phone</button><div id="localMusicList"></div><p class="music-hint">MP3, M4A and other supported local audio. Files remain on your phone. We save access to the songs you select.</p></div>
- <div id="youtubeMusicPanel" class="music-panel" hidden><div class="music-add-url glass"><label class="field"><span>YouTube video link</span><input type="url" id="youtubeUrl" placeholder="https://youtu.be/..."/></label><label class="field"><span>Label (optional)</span><input type="text" id="youtubeLabel" maxlength="80" placeholder="Tonight's cooking song"/></label><button class="wide primary" id="youtubeAdd">＋ Save YouTube link</button></div><div id="youtubePlayerContainer"></div><div id="youtubeLinks"></div><p class="music-hint">YouTube videos play inside their official visible player, with an internet connection. Audio extraction or background-only YouTube playback is not supported.</p></div>
+ <div id="youtubeMusicPanel" class="music-panel" hidden><div class="music-add-url glass"><label class="field"><span>YouTube video link</span><input type="url" id="youtubeUrl" placeholder="https://youtu.be/..."/></label><label class="field"><span>Label (optional)</span><input type="text" id="youtubeLabel" maxlength="80" placeholder="Tonight's cooking song"/></label><button class="wide primary" id="youtubeAdd">＋ Save YouTube link</button></div><div id="youtubePlayerContainer" class="youtube-status" hidden></div><div id="youtubeLinks"></div><p class="music-hint">YouTube videos play inside their official visible player, with an internet connection. Audio extraction or background-only YouTube playback is not supported.</p></div>
 </section>
 <section id="stats" class="page"><div class="page-heading"><span class="eyebrow">PROGRESS WITHOUT PRESSURE</span><h1>Kitchen Story <span>⭐</span></h1><p>Every meal counts. Keep the joy.</p></div><div id="statsContent"></div></section>
 </main>
 <nav class="tabbar"><button class="tab active" data-tab="home"><span>⌂</span><small>Home</small></button><button class="tab" data-tab="journal"><span>▤</span><small>Journal</small></button><button class="tab addtab" id="floatingAdd"><span>＋</span></button><button class="tab" data-tab="gallery"><span>▦</span><small>Gallery</small></button><button class="tab" data-tab="music"><span>♫</span><small>Music</small></button><button class="tab" data-tab="stats"><span>✧</span><small>Story</small></button></nav>
 </div>
+<!-- Persistent visible YouTube player: intentionally outside SPA pages so tab changes cannot unmount it. -->
+<aside id="youtubeDock" class="youtube-dock" hidden aria-label="Persistent YouTube video player">
+ <div class="youtube-dock-head">
+  <span class="youtube-live-dot" aria-hidden="true">▶</span>
+  <span id="youtubeDockTitle" class="youtube-dock-title">YouTube is playing</span>
+  <button type="button" id="youtubeDockMusic" class="youtube-dock-action" aria-label="Go to Cooking Radio" title="Cooking Radio">♫</button>
+  <button type="button" id="youtubeDockClose" class="youtube-dock-action" aria-label="Stop YouTube and close the player" title="Stop YouTube">×</button>
+ </div>
+ <div id="youtubeDockPlayer" class="youtube-dock-player"></div>
+ <div class="youtube-dock-footer"><span>Keep watching while exploring your rotations</span><a id="youtubeOpenExternal" href="https://www.youtube.com/" target="_blank" rel="noopener">Open in YouTube ↗</a></div>
+</aside>
 <div class="modal-wrap" id="modalWrap" aria-hidden="true"><div class="modal-shade" id="modalShade"></div><div class="modal" id="modal"></div></div>
 <div class="mini-music" id="miniMusic" hidden><span class="mini-musical">♫</span><button id="miniMusicTitle" class="mini-name">Cooking Radio</button><button id="miniPrev" class="mini-icon" title="Previous track">‹</button><button id="miniToggle" class="mini-icon" title="Play or pause">▶</button><button id="miniNext" class="mini-icon" title="Next track">›</button></div>
 <div class="toast" id="toast"></div>

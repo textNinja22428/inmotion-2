@@ -1,4 +1,4 @@
-# Cooking Rotations — Android v1.0
+# Cooking Rotations — Android v1.2
 
 Standalone, offline personal cooking journal for Android. **English-language UI**. A warm, playful app where dinner is something to look forward to, not a decision-fatigue chore.
 
@@ -25,3 +25,10 @@ Install: `adb install cooking-app/build/outputs/apk/debug/cooking-app-debug.apk`
 - `cooking-app/src/main/assets/jjba_notification.mp3`: user's short launch sound
 
 User media is **not** silently copied into GitHub; if publishing this source online, only push assets you have permission to share. This ZIP includes the user's own provided assets for their personal build.
+
+## v1.2 — YouTube playback across in-app tabs
+- Fixes the previous `setPage` / `selectMusicTab` code path that explicitly removed the YouTube iframe on navigation.
+- Official YouTube player is mounted once in a floating persistent video dock outside SPA pages; switching Home, Journal, Gallery, Story and Music does not reload or destroy it.
+- The player always stays visible and at least 200px high. Tap × to stop; starting a local file also stops YouTube.
+- Does not offer background-only YouTube audio when the app is minimized, locked, or the player is hidden; YouTube terms and Android lifecycle are respected.
+- Existing journal and playlist data is preserved when installing the update using the same app ID and signing key.
