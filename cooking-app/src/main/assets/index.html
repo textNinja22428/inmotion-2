@@ -26,9 +26,40 @@
  <div id="localMusicPanel" class="music-panel"><button class="wide primary" id="musicImport">＋ Add audio from phone</button><div id="localMusicList"></div><p class="music-hint">MP3, M4A and other supported local audio. Files remain on your phone. We save access to the songs you select.</p></div>
  <div id="youtubeMusicPanel" class="music-panel" hidden><div class="music-add-url glass"><label class="field"><span>YouTube video link</span><input type="url" id="youtubeUrl" placeholder="https://youtu.be/..."/></label><label class="field"><span>Label (optional)</span><input type="text" id="youtubeLabel" maxlength="80" placeholder="Tonight's cooking song"/></label><button class="wide primary" id="youtubeAdd">＋ Save YouTube link</button></div><div id="youtubePlayerContainer" class="youtube-status" hidden></div><div id="youtubeLinks"></div><p class="music-hint">YouTube videos play inside their official visible player, with an internet connection. Audio extraction or background-only YouTube playback is not supported.</p></div>
 </section>
+
+<section id="cinema" class="page">
+ <div class="page-heading"><span class="eyebrow">A LITTLE SHOW WITH DINNER 🍿</span><h1>Kitchen Cinema <span>🎬</span></h1><p>Press play. Make dinner. Keep the good vibes rolling.</p></div>
+ <div class="cinema-feature glass">
+  <div class="cinema-feature-art">🎞️ <span>✨</span></div>
+  <div><span class="eyebrow">YOUR COZY SCREEN</span><h2>Watch while you cook.</h2><p>Offline favorites, your own collections, and streaming shortcuts in one place.</p></div>
+ </div>
+ <div class="cinema-heading"><span>OPEN YOUR FAVORITES</span><small>Official apps</small></div>
+ <div class="cinema-platforms">
+  <button class="cinema-service netflix" data-service="netflix"><b>N</b><span>Netflix</span><small>Open app ↗</small></button>
+  <button class="cinema-service crunchyroll" data-service="crunchyroll"><b>◕</b><span>Crunchyroll</span><small>Open app ↗</small></button>
+  <button class="cinema-service youtube" data-service="youtube"><b>▶</b><span>YouTube</span><small>Open app ↗</small></button>
+ </div>
+ <div class="cinema-continue glass" id="cinemaContinue" hidden></div>
+ <div class="cinema-heading"><span>MY WATCH SHELF</span><button id="cinemaNewCategory" class="cinema-small-button">＋ Collection</button></div>
+ <div class="cinema-shelves" id="cinemaCategories"></div>
+ <div class="cinema-switch">
+  <button class="active" id="cinemaOfflineTab">⬇ Offline videos</button>
+  <button id="cinemaLinksTab">🔗 Saved links</button>
+ </div>
+ <div id="cinemaOfflinePanel">
+  <button class="wide primary cinema-import" id="cinemaImport">＋ Add videos from phone</button>
+  <div id="cinemaVideos" class="cinema-list"></div>
+  <p class="cinema-hint">Your videos stay on your device. Play them offline, organize by collection, and pick up where you left off. The floating mini-player stays visible while you browse other tabs.</p>
+ </div>
+ <div id="cinemaLinksPanel" hidden>
+  <button class="wide primary cinema-import" id="cinemaAddLink">＋ Save video or series link</button>
+  <div id="cinemaLinks" class="cinema-list"></div>
+  <p class="cinema-hint">YouTube links use the official visible in-app player. Netflix and Crunchyroll open in their own apps because protected streams cannot be embedded here.</p>
+ </div>
+</section>
 <section id="stats" class="page"><div class="page-heading"><span class="eyebrow">PROGRESS WITHOUT PRESSURE</span><h1>Kitchen Story <span>⭐</span></h1><p>Every meal counts. Keep the joy.</p></div><div id="statsContent"></div></section>
 </main>
-<nav class="tabbar"><button class="tab active" data-tab="home"><span>⌂</span><small>Home</small></button><button class="tab" data-tab="journal"><span>▤</span><small>Journal</small></button><button class="tab addtab" id="floatingAdd"><span>＋</span></button><button class="tab" data-tab="gallery"><span>▦</span><small>Gallery</small></button><button class="tab" data-tab="music"><span>♫</span><small>Music</small></button><button class="tab" data-tab="stats"><span>✧</span><small>Story</small></button></nav>
+<nav class="tabbar"><button class="tab active" data-tab="home"><span>⌂</span><small>Home</small></button><button class="tab" data-tab="journal"><span>▤</span><small>Journal</small></button><button class="tab addtab" id="floatingAdd"><span>＋</span></button><button class="tab" data-tab="gallery"><span>▦</span><small>Gallery</small></button><button class="tab" data-tab="music"><span>♫</span><small>Music</small></button><button class="tab" data-tab="cinema"><span>🎬</span><small>Cinema</small></button><button class="tab" data-tab="stats"><span>✧</span><small>Story</small></button></nav>
 </div>
 <!-- Persistent visible YouTube player: intentionally outside SPA pages so tab changes cannot unmount it. -->
 <aside id="youtubeDock" class="youtube-dock" hidden aria-label="Persistent YouTube video player">
@@ -45,4 +76,4 @@
 <div class="mini-music" id="miniMusic" hidden><span class="mini-musical">♫</span><button id="miniMusicTitle" class="mini-name">Cooking Radio</button><button id="miniPrev" class="mini-icon" title="Previous track">‹</button><button id="miniToggle" class="mini-icon" title="Play or pause">▶</button><button id="miniNext" class="mini-icon" title="Next track">›</button></div>
 <div class="toast" id="toast"></div>
 <input id="importFile" type="file" accept="application/json" hidden/>
-<script src="app.js"></script><script src="music.js"></script></body></html>
+<script src="app.js"></script><script src="music.js"></script><script src="cinema.js"></script></body></html>

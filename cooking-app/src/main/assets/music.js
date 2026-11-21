@@ -57,8 +57,8 @@ function renderYoutubeList(){
  el.querySelectorAll('[data-yt-play]').forEach(x=>x.onclick=()=>playYoutube(x.dataset.ytPlay));
  el.querySelectorAll('[data-yt-delete]').forEach(x=>x.onclick=()=>{youtubeTracks=youtubeTracks.filter(y=>y.id!==x.dataset.ytDelete);saveYoutubeTracks();if(youtubeActive===x.dataset.ytDelete)closeYoutubePlayer();renderYoutubeList()});
 }
-function playYoutube(id){
- const item=youtubeTracks.find(x=>x.id===id);
+function playYoutube(id,itemOverride=null){
+ const item=itemOverride||youtubeTracks.find(x=>x.id===id);
  if(!item)return;
  // Selecting the same item must not reload the iframe (which restarts its song).
  if(youtubeActive===id && $('youtubeDockPlayer').querySelector('iframe')){
@@ -134,3 +134,6 @@ function initMusic(){
 }
 // Navigation never removes the persistent visible player; only explicit stop does.
 document.addEventListener('DOMContentLoaded',initMusic);
+
+// Cinema links reuse the same official visible persistent YouTube dock without changing the music library.
+window.playCinemaYoutube=function(id,title){return playYoutube(id,{id,title:title||'Cinema video',url:'https://www.youtube.com/watch?v='+id})};
