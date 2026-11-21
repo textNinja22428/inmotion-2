@@ -83,10 +83,10 @@ async function backup(){try{let full=[];for(let e of entries){let media=[];for(l
 async function restoreFile(file){try{let data=JSON.parse(await file.text());if(data.format!=='cooking-rotations-v1'||!Array.isArray(data.rotations)||!Array.isArray(data.entries))throw Error('Invalid backup');if(!confirm('Replace your current rotations and journal with this backup?'))return;rotations=data.rotations;saveRotations();for(let previous of entries)await delEntry(previous.id);for(let e of data.entries){e.media=(e.media||[]).map(m=>({name:m.name,type:m.type,blob:dataUrlToBlob(m.data)}));await putEntry(e)}await refresh();closeModal();toast('Backup restored!')}catch(err){console.error(err);toast('Invalid backup file')}}
 window.openSettings=function(){showModal(`${modalHeader('Kitchen Settings','Make your happy little cooking corner your own.')}
 <div class="sound-panel">
-  <div class="sound-panel-head"><span class="sound-bubble">🎧</span><div><b>Kitchen Soundscape</b><small>18 little sounds for your happy cooking ritual</small></div><label class="sound-switch"><input type="checkbox" id="sfxEnabled" aria-label="Enable sound effects"/><span class="sound-switch-track"></span></label></div>
+  <div class="sound-panel-head"><span class="sound-bubble">🎧</span><div><b>Kitchen Soundscape</b><small>Curated fantasy RPG menu sounds · CC0</small></div><label class="sound-switch"><input type="checkbox" id="sfxEnabled" aria-label="Enable sound effects"/><span class="sound-switch-track"></span></label></div>
   <div class="sound-volume-row"><span>Sound effects volume</span><b id="sfxVolumeValue">45%</b></div>
   <input type="range" min="0" max="100" step="5" value="45" id="sfxVolume" aria-label="Sound effects volume"/>
-  <div class="sound-note">Soft cooking sounds stay offline and won't replace your Cooking Radio music.</div>
+  <div class="sound-note">New crystal-style menu cues, licensed CC0, with light ambience. Offline and independent of Cooking Radio.</div>
   <button type="button" class="sound-preview" id="sfxPreview">♪ Preview the sounds</button>
 </div>
 <div class="detail-row"><span>🎬</span><div style="flex:1"><b>Cinematic welcome music</b><small>Play Mutfakta Şov when the opening door video begins.</small></div><label class="sound-switch"><input type="checkbox" id="welcomeMusicEnabled" aria-label="Play cinematic welcome music"/><span class="sound-switch-track"></span></label></div>
