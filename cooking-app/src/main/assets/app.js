@@ -96,11 +96,12 @@ window.skipSplash=function(){
  }catch(e){}
  ambient.play().catch(()=>{});
  $('splash').classList.add('gone');
+ // Keep the splash crossfade (0.85s) separate from the full 3 seconds of visible footage.
  welcomeUiTimer=setTimeout(()=>{
   document.body.classList.remove('intro-pending');
   document.body.classList.add('intro-revealed');
   welcomeUiTimer=null;
- },3000);
+ },3850);
 };
 function initSplash(){
  const ambient=$('ambient');
