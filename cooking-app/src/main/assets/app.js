@@ -82,7 +82,35 @@ function downloadFile(name,content,mime){let a=document.createElement('a');let u
 async function backup(){try{let full=[];for(let e of entries){let media=[];for(let m of(e.media||[]))media.push({name:m.name,type:m.type,data:await blobToDataUrl(m.blob)});full.push({...e,media})}downloadFile('CookingRotations_backup_'+today()+'.json',JSON.stringify({format:'cooking-rotations-v1',date:today(),rotations,entries:full}), 'application/json');toast('Backup exported ✨')}catch(err){console.error(err);toast('Backup could not be exported')}}
 async function restoreFile(file){try{let data=JSON.parse(await file.text());if(data.format!=='cooking-rotations-v1'||!Array.isArray(data.rotations)||!Array.isArray(data.entries))throw Error('Invalid backup');if(!confirm('Replace your current rotations and journal with this backup?'))return;rotations=data.rotations;saveRotations();for(let previous of entries)await delEntry(previous.id);for(let e of data.entries){e.media=(e.media||[]).map(m=>({name:m.name,type:m.type,blob:dataUrlToBlob(m.data)}));await putEntry(e)}await refresh();closeModal();toast('Backup restored!')}catch(err){console.error(err);toast('Invalid backup file')}}
 window.openSettings=function(){showModal(`${modalHeader('Kitchen Settings','Make your happy little cooking corner your own.')}<div class="detail-row"><span>📦</span><div><b>Backup your journal & media</b><small>Export a local JSON backup with rotations, photos and videos.</small></div></div><button class="wide ghost" onclick="backup()">↓ Export all my data</button><div class="detail-row"><span>📂</span><div><b>Restore a backup</b><small>Import your saved backup file.</small></div></div><button class="wide ghost" onclick="document.getElementById('importFile').click()">↑ Import backup</button><div class="detail-row"><span>🔒</span><div><b>Private and offline</b><small>Your menu and journal stay on your own device. No accounts or tracking.</small></div></div><p class="tiny-note">Keep backups before uninstalling or clearing app storage. This app does not upload your photos anywhere.</p>`)};
-window.skipSplash=function(){$('splash').classList.add('gone');$('ambient').play().catch(()=>{})};
-function initSplash(){setTimeout(skipSplash,3300);document.addEventListener('visibilitychange',()=>{if(document.hidden)$('ambient').pause();else $('ambient').play().catch(()=>{})})}
+// Two-phase welcome: anime splash, then three uninterrupted seconds of ambient cooking footage.
+// Only after the video has its own moment do the readable menu surfaces fade in.
+let welcomeStarted=false;
+let welcomeUiTimer=null;
+window.skipSplash=function(){
+ if(welcomeStarted)return;
+ welcomeStarted=true;
+ const ambient=$('ambient');
+ try{
+  if(ambient.readyState>=1)ambient.currentTime=0;
+  else ambient.addEventListener('loadedmetadata',()=>{try{ambient.currentTime=0}catch(e){}},{once:true});
+ }catch(e){}
+ ambient.play().catch(()=>{});
+ $('splash').classList.add('gone');
+ welcomeUiTimer=setTimeout(()=>{
+  document.body.classList.remove('intro-pending');
+  document.body.classList.add('intro-revealed');
+  welcomeUiTimer=null;
+ },3000);
+};
+function initSplash(){
+ const ambient=$('ambient');
+ // The opening video should begin from its first frame AFTER the splash.
+ ambient.pause();
+ setTimeout(skipSplash,3300);
+ document.addEventListener('visibilitychange',()=>{
+  if(document.hidden)ambient.pause();
+  else if(welcomeStarted)ambient.play().catch(()=>{});
+ });
+}
 function bind(){document.querySelectorAll('.tab[data-tab]').forEach(b=>b.addEventListener('click',()=>setPage(b.dataset.tab)));$('floatingAdd').onclick=()=>openJournalEditor();$('quickJournal').onclick=()=>openJournalEditor();$('journalNew').onclick=()=>openJournalEditor();$('addRotation').onclick=()=>editRotation(null);$('surpriseMe').onclick=randomPick;$('settingsButton').onclick=openSettings;$('modalShade').onclick=closeModal;$('importFile').onchange=e=>{if(e.target.files[0])restoreFile(e.target.files[0]);e.target.value=''};window.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()})}
 async function init(){bind();initSplash();try{await openDB();await refresh()}catch(err){console.error(err);toast('Local journal storage unavailable');renderHome()}}init();

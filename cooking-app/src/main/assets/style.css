@@ -65,3 +65,15 @@
 .youtube-docked .modal{bottom:calc(349px + env(safe-area-inset-bottom));max-height:max(200px,calc(100dvh - 365px));border-radius:20px}
 .youtube-docked .toast{bottom:calc(355px + env(safe-area-inset-bottom))}
 @media(max-height:660px){.youtube-dock-player .youtube-frame{height:200px}.youtube-docked .modal{bottom:calc(338px + env(safe-area-inset-bottom));max-height:calc(100dvh - 355px)}}
+
+
+/* v1.3 — Give the background film its own uninterrupted three-second introduction.
+   No text, controls, cards, darkening overlay, or new audio until the interface fades in. */
+.app-shell{transition:opacity 1s ease,transform 1s cubic-bezier(.2,.8,.2,1)}
+.video-shade{transition:opacity 1.25s ease}
+body.intro-pending .app-shell{opacity:0;visibility:hidden;pointer-events:none;transform:translateY(12px)}
+body.intro-pending .video-shade{opacity:0}
+body.intro-pending .mini-music,body.intro-pending .youtube-dock,body.intro-pending .toast{visibility:hidden;pointer-events:none}
+@media(prefers-reduced-motion:reduce){
+ .app-shell,.video-shade{transition:none!important}
+}
