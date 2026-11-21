@@ -1,5 +1,9 @@
 plugins { id 'com.android.application' }
-dependencies { implementation 'androidx.webkit:webkit:1.12.1' }
+dependencies {
+ implementation 'androidx.webkit:webkit:1.12.1'
+ implementation 'androidx.media3:media3-exoplayer:1.11.1'
+ implementation 'androidx.media3:media3-ui:1.11.1'
+}
 android {
  namespace 'com.cookingrotations.app'
  compileSdk 35
