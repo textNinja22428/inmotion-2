@@ -26,6 +26,7 @@ import android.text.TextUtils;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.provider.OpenableColumns;
 import android.webkit.CookieManager;
 import android.webkit.JavascriptInterface;
@@ -50,6 +51,8 @@ public final class MainActivity extends Activity {
   private WebView webView;
   private ValueCallback<Uri[]> fileCallback;
   private MediaPlayer openingAudio;
+  private MediaPlayer welcomeAudio;
+  private long welcomeAudioStartedAt=0L;
   private MediaPlayer player;
   private final ArrayList<Song> tracks = new ArrayList<>();
   private String currentSong = "";
@@ -138,6 +141,7 @@ public final class MainActivity extends Activity {
       }
     });
     webView.addJavascriptInterface(new MusicBridge(),"NativeMusic");
+    webView.addJavascriptInterface(new IntroBridge(),"NativeIntro");
     webView.addJavascriptInterface(new CinemaBridge(),"NativeCinema");
     rootView=new FrameLayout(this);
     rootView.addView(webView,new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
@@ -166,6 +170,73 @@ public final class MainActivity extends Activity {
       openingAudio.setOnCompletionListener(m -> {m.release();openingAudio=null;});
       openingAudio.prepare(); openingAudio.start();
     } catch(Exception ignored) {}
+  }
+
+
+  // A short offline theme for the seven-second cinematic door-opening transition.
+  // Keeping this native avoids HTML5 autoplay restrictions and does not interrupt Cooking Radio after startup.
+  private final Runnable welcomeFadeTicker=new Runnable(){
+    @Override public void run(){
+      MediaPlayer current=welcomeAudio;
+      if(current==null)return;
+      long elapsed=SystemClock.uptimeMillis()-welcomeAudioStartedAt;
+      if(elapsed>=7850L){stopWelcomeAudio();return;}
+      // Start gently; fade away over the final second before the home interface appears.
+      float fadeIn=Math.min(1f,Math.max(0f,elapsed/180f));
+      float fadeOut=Math.min(1f,Math.max(0f,(7850f-elapsed)/1050f));
+      float gain=.75f*fadeIn*fadeOut;
+      try{current.setVolume(gain,gain);}catch(Exception ignored){}
+      handler.postDelayed(this,75);
+    }
+  };
+  private void stopWelcomeAudio(){
+    handler.removeCallbacks(welcomeFadeTicker);
+    MediaPlayer current=welcomeAudio;
+    welcomeAudio=null;
+    welcomeAudioStartedAt=0L;
+    if(current!=null){try{current.stop();}catch(Exception ignored){}try{current.release();}catch(Exception ignored){}}
+  }
+  private boolean isWelcomeMusicEnabled(){
+    return getSharedPreferences("cooking_welcome_v1",Context.MODE_PRIVATE).getBoolean("music_enabled",true);
+  }
+  private void startWelcomeAudio(){
+    stopWelcomeAudio();
+    // Splash jingle must not overlap this scene.
+    if(openingAudio!=null){try{openingAudio.stop();}catch(Exception ignored){}try{openingAudio.release();}catch(Exception ignored){}openingAudio=null;}
+    if(!isWelcomeMusicEnabled())return;
+    AssetFileDescriptor afd=null;
+    MediaPlayer mp=null;
+    try{
+      afd=getAssets().openFd("welcome_theme.mp3");
+      mp=new MediaPlayer();
+      mp.setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA)
+        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build());
+      mp.setDataSource(afd.getFileDescriptor(),afd.getStartOffset(),afd.getLength());
+      afd.close();afd=null;
+      final MediaPlayer thisPlayer=mp;
+      mp.setOnCompletionListener(done->{
+        if(welcomeAudio==thisPlayer)stopWelcomeAudio();
+      });
+      mp.prepare();
+      welcomeAudio=mp;
+      welcomeAudioStartedAt=SystemClock.uptimeMillis();
+      mp.setVolume(0f,0f);
+      mp.start();
+      handler.post(welcomeFadeTicker);
+    }catch(Exception e){
+      if(afd!=null)try{afd.close();}catch(Exception ignored){}
+      if(mp!=null&&mp!=welcomeAudio)try{mp.release();}catch(Exception ignored){}
+      stopWelcomeAudio();
+    }
+  }
+  private final class IntroBridge {
+    @JavascriptInterface public void startWelcome(){runOnUiThread(()->startWelcomeAudio());}
+    @JavascriptInterface public void stopWelcome(){runOnUiThread(()->stopWelcomeAudio());}
+    @JavascriptInterface public boolean getMusicEnabled(){return isWelcomeMusicEnabled();}
+    @JavascriptInterface public void setMusicEnabled(boolean v){runOnUiThread(()->{
+      getSharedPreferences("cooking_welcome_v1",Context.MODE_PRIVATE).edit().putBoolean("music_enabled",v).apply();
+      if(!v)stopWelcomeAudio();
+    });}
   }
 
   private void restoreMusic() {
@@ -603,6 +674,7 @@ public final class MainActivity extends Activity {
     });
   }
   @Override protected void onPause(){
+    stopWelcomeAudio();
     if(cinemaVideoView!=null){saveCinemaProgress();persistCinema();cinemaVideoView.pause();}
     super.onPause();if(webView!=null)webView.onPause();
   }
@@ -610,6 +682,7 @@ public final class MainActivity extends Activity {
   @Override protected void onDestroy(){
     if(fileCallback!=null)fileCallback.onReceiveValue(null);
     if(openingAudio!=null){openingAudio.release();openingAudio=null;}
+    stopWelcomeAudio();
     stopPlayer();
     closeCinemaVideo();
     rootView=null;

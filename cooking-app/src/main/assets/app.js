@@ -89,8 +89,9 @@ window.openSettings=function(){showModal(`${modalHeader('Kitchen Settings','Make
   <div class="sound-note">Soft cooking sounds stay offline and won't replace your Cooking Radio music.</div>
   <button type="button" class="sound-preview" id="sfxPreview">♪ Preview the sounds</button>
 </div>
-<div class="detail-row"><span>📦</span><div><b>Backup your journal & media</b><small>Export a local JSON backup with rotations, photos and videos.</small></div></div><button class="wide ghost" onclick="backup()">↓ Export all my data</button><div class="detail-row"><span>📂</span><div><b>Restore a backup</b><small>Import your saved backup file.</small></div></div><button class="wide ghost" onclick="document.getElementById('importFile').click()">↑ Import backup</button><div class="detail-row"><span>🔒</span><div><b>Private and offline</b><small>Your menu and journal stay on your own device. No accounts or tracking.</small></div></div><p class="tiny-note">Keep backups before uninstalling or clearing app storage. This app does not upload your photos anywhere.</p>`);if(window.SFX)SFX.bindSettings()};
-// Two-phase welcome: anime splash, then three uninterrupted seconds of ambient cooking footage.
+<div class="detail-row"><span>🎬</span><div style="flex:1"><b>Cinematic welcome music</b><small>Play Mutfakta Şov when the opening door video begins.</small></div><label class="sound-switch"><input type="checkbox" id="welcomeMusicEnabled" aria-label="Play cinematic welcome music"/><span class="sound-switch-track"></span></label></div>
+<div class="detail-row"><span>📦</span><div><b>Backup your journal & media</b><small>Export a local JSON backup with rotations, photos and videos.</small></div></div><button class="wide ghost" onclick="backup()">↓ Export all my data</button><div class="detail-row"><span>📂</span><div><b>Restore a backup</b><small>Import your saved backup file.</small></div></div><button class="wide ghost" onclick="document.getElementById('importFile').click()">↑ Import backup</button><div class="detail-row"><span>🔒</span><div><b>Private and offline</b><small>Your menu and journal stay on your own device. No accounts or tracking.</small></div></div><p class="tiny-note">Keep backups before uninstalling or clearing app storage. This app does not upload your photos anywhere.</p>`);if(window.SFX)SFX.bindSettings();if(window.NativeIntro){let checkbox=$('welcomeMusicEnabled');if(checkbox){checkbox.checked=NativeIntro.getMusicEnabled();checkbox.onchange=()=>NativeIntro.setMusicEnabled(checkbox.checked)}}};
+// Two-phase welcome: anime splash, then seven uninterrupted seconds of ambient cooking footage with its music.
 // Only after the video has its own moment do the readable menu surfaces fade in.
 let welcomeStarted=false;
 let welcomeUiTimer=null;
@@ -104,10 +105,13 @@ window.skipSplash=function(){
  }catch(e){}
  ambient.play().catch(()=>{});
  $('splash').classList.add('gone');
+ // Start the supplied Mutfakta Şov theme exactly as the door video crossfade begins.
+ if(window.NativeIntro)try{NativeIntro.startWelcome()}catch(e){}
  // Keep the splash crossfade (0.85s) separate from the full 7 seconds of visible footage.
  welcomeUiTimer=setTimeout(()=>{
   document.body.classList.remove('intro-pending');
   document.body.classList.add('intro-revealed');
+  if(window.NativeIntro)try{NativeIntro.stopWelcome()}catch(e){}
   welcomeUiTimer=null;
  },7850);
 };
