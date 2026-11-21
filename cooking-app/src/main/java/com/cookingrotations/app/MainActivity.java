@@ -580,8 +580,7 @@ public final class MainActivity extends Activity {
       closeCinemaVideo();
     });
     cinemaVideoView.setOnErrorListener((mp,what,extra)->{
-      sendCinemaMessage("Can't play this format. Try an MP4 supported by your phone.");
-      closeCinemaVideo();
+      sendCinemaMessage("This video needs another decoder. Tap ↗ Open to try another video player.");
       return true;
     });
     try{
