@@ -9,9 +9,13 @@ jobs:
   tools:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
       - name: Install Android build tools
         run: |
-          yes | sdkmanager --licenses >/dev/null || true
           sdkmanager 'build-tools;35.0.0'
           mkdir -p packing
           cp "$ANDROID_HOME/build-tools/35.0.0/zipalign" packing/
