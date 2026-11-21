@@ -20,7 +20,6 @@ import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.widget.VideoView;
 import android.widget.MediaController;
 import android.text.TextUtils;
 import android.os.Bundle;
@@ -76,7 +75,7 @@ public final class MainActivity extends Activity {
   private final ArrayList<CinemaVideo> cinemaVideos = new ArrayList<>();
   private FrameLayout rootView;
   private LinearLayout cinemaOverlay;
-  private VideoView cinemaVideoView;
+  private CinemaPlayerView cinemaVideoView;
   private TextView cinemaSizeButton;
   private String cinemaPlayingUri = "";
   private boolean cinemaMini = false;
@@ -547,12 +546,16 @@ public final class MainActivity extends Activity {
     cinemaSizeButton.setText("↘ Mini");
     cinemaSizeButton.setOnClickListener(v->{cinemaMini=!cinemaMini;configureCinemaOverlay();});
     bar.addView(cinemaSizeButton,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,ViewGroup.LayoutParams.WRAP_CONTENT));
+    TextView openExternal=new TextView(this);
+    openExternal.setText("↗ Open");styleCinemaButton(openExternal);
+    openExternal.setOnClickListener(v->openCinemaVideoExternal(file.uri));
+    bar.addView(openExternal,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,ViewGroup.LayoutParams.WRAP_CONTENT));
     TextView close=new TextView(this);
     close.setText("✕ Close");styleCinemaButton(close);
     close.setOnClickListener(v->closeCinemaVideo());
     bar.addView(close,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,ViewGroup.LayoutParams.WRAP_CONTENT));
     cinemaOverlay.addView(bar,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,dip(46)));
-    cinemaVideoView=new VideoView(this);
+    cinemaVideoView=new CinemaPlayerView(this);
     cinemaVideoView.setBackgroundColor(Color.BLACK);
     cinemaOverlay.addView(cinemaVideoView,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,0,1));
     rootView.addView(cinemaOverlay);
@@ -581,9 +584,25 @@ public final class MainActivity extends Activity {
       closeCinemaVideo();
       return true;
     });
-    try{cinemaVideoView.setVideoURI(Uri.parse(uri));cinemaVideoView.requestFocus();}
+    try{
+      cinemaVideoView.setVideoURI(Uri.parse(uri));cinemaVideoView.requestFocus();
+      final CinemaPlayerView active=cinemaVideoView;
+      handler.postDelayed(()->{
+        if(cinemaVideoView==active&&active.hasStarted()&&!active.hasRenderedVideoFrame()){
+          sendCinemaMessage("Audio but no picture? Tap ↗ Open to try another player.");
+        }
+      },6500);
+    }
     catch(Exception e){closeCinemaVideo();sendCinemaMessage("Video unavailable. Please add it again from your phone.");}
     sendCinemaSnapshot();
+  }
+  private void openCinemaVideoExternal(String contentUri){
+    try{
+      Intent external=new Intent(Intent.ACTION_VIEW);
+      external.setDataAndType(Uri.parse(contentUri),"video/*");
+      external.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+      startActivity(Intent.createChooser(external,"Choose video player"));
+    }catch(Exception e){sendCinemaMessage("No external player available");}
   }
   private void openCinemaExternal(String url,String preferredPackage){
     if(url==null)return;
