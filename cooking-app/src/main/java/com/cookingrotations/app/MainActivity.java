@@ -199,7 +199,7 @@ public final class MainActivity extends Activity {
       if(c!=null && c.moveToFirst())title=c.getString(0);
     }catch(Exception ignored){}
     if(title==null||title.trim().isEmpty())title="Untitled track";
-    return title.replaceFirst("(?i)\\.(mp3|m4a|aac|wav|ogg|flac|opus)$", "");
+    return title.replaceFirst("(?i)\\.(mp3|m4a|aac|wav|ogg|flac|opus|mp4|mkv|mov|webm|avi|3gp|m4v)$", "");
   }
   private void importTracks(Intent data) {
     if(data==null)return;
@@ -500,6 +500,8 @@ public final class MainActivity extends Activity {
       sendCinemaSnapshot();
     });
     cinemaVideoView.setOnCompletionListener(mp->{
+      // Preserve the completed state; closing should not overwrite it with end-of-file time.
+      cinemaPlayingUri="";
       file.position=0;persistCinema();
       closeCinemaVideo();
     });
