@@ -34,6 +34,12 @@ jobs:
           if [ ! -s ~/.android/debug.keystore ]; then
             keytool -genkeypair -keystore ~/.android/debug.keystore -storepass android -keypass android -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 36500 -dname 'CN=Cooking Rotations,O=Personal,C=TR'
           fi
+      - name: Validate app JavaScript
+        shell: bash
+        run: |
+          node --check cooking-app/src/main/assets/app.js
+          node --check cooking-app/src/main/assets/music.js
+          node --check cooking-app/src/main/assets/cinema.js
       - name: Build Android APK
         run: gradle --no-daemon :cooking-app:assembleDebug
       - uses: actions/upload-artifact@v4
