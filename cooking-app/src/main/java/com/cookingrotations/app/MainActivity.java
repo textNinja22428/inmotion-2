@@ -13,6 +13,16 @@ import android.media.AudioAttributes;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.net.Uri;
+import android.view.Gravity;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.FrameLayout;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+import android.widget.VideoView;
+import android.widget.MediaController;
+import android.text.TextUtils;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -36,6 +46,7 @@ import java.util.Random;
 public final class MainActivity extends Activity {
   private static final int PICK_MEDIA = 1106;
   private static final int PICK_AUDIO = 1107;
+  private static final int PICK_CINEMA = 1108;
   private WebView webView;
   private ValueCallback<Uri[]> fileCallback;
   private MediaPlayer openingAudio;
@@ -56,6 +67,26 @@ public final class MainActivity extends Activity {
     if (focus <= 0) runOnUiThread(() -> pauseMusic());
   };
 
+
+  // Kitchen Cinema: content:// access is retained through the Android document picker.
+  private SharedPreferences cinemaPrefs;
+  private final ArrayList<CinemaVideo> cinemaVideos = new ArrayList<>();
+  private FrameLayout rootView;
+  private LinearLayout cinemaOverlay;
+  private VideoView cinemaVideoView;
+  private TextView cinemaSizeButton;
+  private String cinemaPlayingUri = "";
+  private boolean cinemaMini = false;
+  private long cinemaLastSaveTime = 0L;
+
+  private static final class CinemaVideo {
+    String uri, title, category;
+    boolean favorite;
+    int position, duration;
+    long lastPlayed;
+    CinemaVideo(String u,String t,String c){uri=u;title=t;category=c;}
+  }
+
   private static final class Song {
     final String uri;
     final String title;
@@ -70,6 +101,8 @@ public final class MainActivity extends Activity {
     prefs = getSharedPreferences("cooking_music_v1", Context.MODE_PRIVATE);
     audioManager=(AudioManager)getSystemService(Context.AUDIO_SERVICE);
     restoreMusic();
+    cinemaPrefs=getSharedPreferences("cooking_cinema_v1",Context.MODE_PRIVATE);
+    restoreCinema();
     webView = new WebView(this);
     webView.setBackgroundColor(Color.rgb(34,22,34));
     webView.setOverScrollMode(WebView.OVER_SCROLL_NEVER);
@@ -105,12 +138,26 @@ public final class MainActivity extends Activity {
       }
     });
     webView.addJavascriptInterface(new MusicBridge(),"NativeMusic");
-    setContentView(webView);
+    webView.addJavascriptInterface(new CinemaBridge(),"NativeCinema");
+    rootView=new FrameLayout(this);
+    rootView.addView(webView,new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
+    setContentView(rootView);
     webView.loadUrl("https://appassets.androidplatform.net/assets/index.html");
-    handler.postDelayed(() -> { webReady = true; pushState(); }, 1400);
+    handler.postDelayed(() -> { webReady = true; pushState(); sendCinemaSnapshot(); }, 1400);
     handler.postDelayed(new Runnable() {
       @Override public void run() { if(webView!=null) { if(player!=null && playing)pushState(); handler.postDelayed(this,900); } }
     }, 900);
+    handler.postDelayed(new Runnable() {
+      @Override public void run() {
+        if (rootView!=null) {
+          if (cinemaVideoView!=null && !cinemaPlayingUri.isEmpty()) {
+            saveCinemaProgress();
+            sendCinemaSnapshot();
+          }
+          handler.postDelayed(this,3500);
+        }
+      }
+    },3500);
     try {
       AssetFileDescriptor afd=getAssets().openFd("jjba_notification.mp3");
       openingAudio=new MediaPlayer();
@@ -268,9 +315,275 @@ public final class MainActivity extends Activity {
     });}
   }
 
+
+  private int dip(int dp){return Math.round(dp*getResources().getDisplayMetrics().density);}
+
+  private void restoreCinema(){
+    cinemaVideos.clear();
+    try {
+      JSONArray arr=new JSONArray(cinemaPrefs.getString("videos","[]"));
+      for(int i=0;i<arr.length();i++){
+        JSONObject o=arr.getJSONObject(i);
+        String uri=o.optString("uri","");
+        if(uri.isEmpty())continue;
+        CinemaVideo v=new CinemaVideo(uri,o.optString("title","My video"),o.optString("category","Other"));
+        v.position=o.optInt("position",0);
+        v.duration=o.optInt("duration",0);
+        v.lastPlayed=o.optLong("lastPlayed",0);
+        v.favorite=o.optBoolean("favorite",false);
+        cinemaVideos.add(v);
+      }
+    }catch(Exception ignored){}
+  }
+  private void persistCinema(){
+    JSONArray arr=new JSONArray();
+    for(CinemaVideo v:cinemaVideos){
+      try {
+        JSONObject o=new JSONObject();
+        o.put("uri",v.uri);o.put("title",v.title);o.put("category",v.category);
+        o.put("position",v.position);o.put("duration",v.duration);
+        o.put("favorite",v.favorite);o.put("lastPlayed",v.lastPlayed);
+        arr.put(o);
+      }catch(Exception ignored){}
+    }
+    cinemaPrefs.edit().putString("videos",arr.toString()).apply();
+  }
+  private CinemaVideo findCinemaVideo(String uri){
+    for(CinemaVideo v:cinemaVideos)if(v.uri.equals(uri))return v;
+    return null;
+  }
+  private void sendCinemaMessage(String msg){
+    if(webView!=null)webView.evaluateJavascript("window.onNativeCinemaMessage&&window.onNativeCinemaMessage("+JSONObject.quote(msg)+")",null);
+  }
+  private void sendCinemaSnapshot(){
+    if(webView==null||!webReady)return;
+    JSONArray list=new JSONArray();
+    for(CinemaVideo v:cinemaVideos){
+      try{
+        JSONObject o=new JSONObject();
+        o.put("uri",v.uri);o.put("title",v.title);o.put("category",v.category);
+        o.put("favorite",v.favorite);o.put("position",v.position);
+        o.put("duration",v.duration);o.put("lastPlayed",v.lastPlayed);
+        list.put(o);
+      }catch(Exception ignored){}
+    }
+    JSONObject data=new JSONObject();
+    try{data.put("videos",list);data.put("playingUri",cinemaPlayingUri);}catch(Exception ignored){}
+    webView.evaluateJavascript("window.onNativeCinemaSnapshot&&window.onNativeCinemaSnapshot("+data.toString()+")",null);
+  }
+  private void importCinemaVideos(Intent result){
+    if(result==null)return;
+    ArrayList<Uri> picked=new ArrayList<>();
+    if(result.getClipData()!=null){
+      ClipData clips=result.getClipData();
+      for(int i=0;i<clips.getItemCount();i++)picked.add(clips.getItemAt(i).getUri());
+    }else if(result.getData()!=null)picked.add(result.getData());
+    int count=0;
+    for(Uri uri:picked){
+      if(findCinemaVideo(uri.toString())!=null)continue;
+      try{
+        getContentResolver().takePersistableUriPermission(uri,Intent.FLAG_GRANT_READ_URI_PERMISSION);
+      }catch(Exception ignored){}
+      String title=getDisplayName(uri);
+      CinemaVideo video=new CinemaVideo(uri.toString(),title,"Other");
+      cinemaVideos.add(0,video);count++;
+    }
+    persistCinema();
+    sendCinemaSnapshot();
+    if(count>0)sendCinemaMessage(count+" offline video"+(count==1?"":"s")+" added 🍿");
+  }
+  private void saveCinemaProgress(){
+    if(cinemaVideoView==null||cinemaPlayingUri.isEmpty())return;
+    CinemaVideo v=findCinemaVideo(cinemaPlayingUri);
+    if(v==null)return;
+    try{
+      int position=cinemaVideoView.getCurrentPosition();
+      int duration=cinemaVideoView.getDuration();
+      if(position>=0)v.position=position;
+      if(duration>0)v.duration=duration;
+    }catch(Exception ignored){}
+    long now=System.currentTimeMillis();
+    if(now-cinemaLastSaveTime>3000){
+      persistCinema();
+      cinemaLastSaveTime=now;
+    }
+  }
+  private void styleCinemaButton(TextView v){
+    v.setTextColor(Color.WHITE);
+    v.setTextSize(13);
+    v.setPadding(dip(9),dip(9),dip(9),dip(9));
+  }
+  private void configureCinemaOverlay(){
+    if(cinemaOverlay==null||rootView==null)return;
+    FrameLayout.LayoutParams lp;
+    if(cinemaMini){
+      int width=Math.min(getResources().getDisplayMetrics().widthPixels-dip(20),dip(440));
+      lp=new FrameLayout.LayoutParams(width,dip(254),Gravity.BOTTOM|Gravity.CENTER_HORIZONTAL);
+      lp.bottomMargin=dip(88);
+    }else{
+      lp=new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT);
+    }
+    cinemaOverlay.setLayoutParams(lp);
+    if(cinemaSizeButton!=null)cinemaSizeButton.setText(cinemaMini?"⛶ Expand":"↘ Mini");
+    webView.evaluateJavascript("document.body.classList."+(cinemaMini?"add":"remove")+"('cinema-native-mini')",null);
+  }
+  private void closeCinemaVideo(){
+    if(cinemaOverlay==null)return;
+    saveCinemaProgress();
+    persistCinema();
+    if(cinemaVideoView!=null){
+      try{cinemaVideoView.stopPlayback();}catch(Exception ignored){}
+      cinemaVideoView=null;
+    }
+    rootView.removeView(cinemaOverlay);
+    cinemaOverlay=null;
+    cinemaSizeButton=null;
+    cinemaPlayingUri="";
+    cinemaMini=false;
+    if(webView!=null)webView.evaluateJavascript("document.body.classList.remove('cinema-native-mini')",null);
+    sendCinemaSnapshot();
+  }
+  private void playCinemaVideo(String uri){
+    CinemaVideo file=findCinemaVideo(uri);
+    if(file==null){sendCinemaMessage("Video not found in your shelf");return;}
+    if(cinemaVideoView!=null && cinemaPlayingUri.equals(uri)){
+      cinemaMini=false;configureCinemaOverlay();
+      try{cinemaVideoView.start();}catch(Exception ignored){}
+      return;
+    }
+    closeCinemaVideo();
+    pauseMusic();
+    if(webView!=null)webView.evaluateJavascript("if(typeof closeYoutubePlayer==='function')closeYoutubePlayer()",null);
+    cinemaPlayingUri=file.uri;
+    file.lastPlayed=System.currentTimeMillis();
+    persistCinema();
+    cinemaMini=false;
+    cinemaOverlay=new LinearLayout(this);
+    cinemaOverlay.setOrientation(LinearLayout.VERTICAL);
+    cinemaOverlay.setBackgroundColor(Color.rgb(23,14,27));
+    cinemaOverlay.setElevation(dip(22));
+    LinearLayout bar=new LinearLayout(this);
+    bar.setGravity(Gravity.CENTER_VERTICAL);
+    bar.setPadding(dip(7),dip(3),dip(6),dip(3));
+    bar.setBackgroundColor(Color.rgb(55,35,63));
+    TextView title=new TextView(this);
+    title.setText("🍿 "+file.title);
+    title.setTextColor(Color.WHITE);title.setTextSize(13);title.setSingleLine(true);
+    title.setEllipsize(TextUtils.TruncateAt.END);
+    bar.addView(title,new LinearLayout.LayoutParams(0,dip(43),1));
+    cinemaSizeButton=new TextView(this);
+    styleCinemaButton(cinemaSizeButton);
+    cinemaSizeButton.setText("↘ Mini");
+    cinemaSizeButton.setOnClickListener(v->{cinemaMini=!cinemaMini;configureCinemaOverlay();});
+    bar.addView(cinemaSizeButton,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,ViewGroup.LayoutParams.WRAP_CONTENT));
+    TextView close=new TextView(this);
+    close.setText("✕ Close");styleCinemaButton(close);
+    close.setOnClickListener(v->closeCinemaVideo());
+    bar.addView(close,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,ViewGroup.LayoutParams.WRAP_CONTENT));
+    cinemaOverlay.addView(bar,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,dip(46)));
+    cinemaVideoView=new VideoView(this);
+    cinemaVideoView.setBackgroundColor(Color.BLACK);
+    cinemaOverlay.addView(cinemaVideoView,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,0,1));
+    rootView.addView(cinemaOverlay);
+    configureCinemaOverlay();
+    MediaController controls=new MediaController(this);
+    controls.setAnchorView(cinemaVideoView);
+    cinemaVideoView.setMediaController(controls);
+    cinemaVideoView.setOnPreparedListener(mp->{
+      if(cinemaVideoView==null || !cinemaPlayingUri.equals(file.uri))return;
+      int length=cinemaVideoView.getDuration();
+      if(length>0){file.duration=length;}
+      int resume=Math.max(0,file.position);
+      if(length>0 && resume>=length-1500)resume=0;
+      if(resume>0)cinemaVideoView.seekTo(resume);
+      cinemaVideoView.start();
+      sendCinemaSnapshot();
+    });
+    cinemaVideoView.setOnCompletionListener(mp->{
+      file.position=0;persistCinema();
+      closeCinemaVideo();
+    });
+    cinemaVideoView.setOnErrorListener((mp,what,extra)->{
+      sendCinemaMessage("Can't play this format. Try an MP4 supported by your phone.");
+      closeCinemaVideo();
+      return true;
+    });
+    try{cinemaVideoView.setVideoURI(Uri.parse(uri));cinemaVideoView.requestFocus();}
+    catch(Exception e){closeCinemaVideo();sendCinemaMessage("Video unavailable. Please add it again from your phone.");}
+    sendCinemaSnapshot();
+  }
+  private void openCinemaExternal(String url,String preferredPackage){
+    if(url==null)return;
+    Uri uri;
+    try{
+      uri=Uri.parse(url);
+      if(!"https".equalsIgnoreCase(uri.getScheme())||uri.getHost()==null)throw new Exception();
+    }catch(Exception e){sendCinemaMessage("Only HTTPS links can be opened");return;}
+    closeCinemaVideo();
+    try{
+      Intent intent=new Intent(Intent.ACTION_VIEW,uri);
+      intent.addCategory(Intent.CATEGORY_BROWSABLE);
+      if(preferredPackage!=null&&!preferredPackage.isEmpty())intent.setPackage(preferredPackage);
+      startActivity(intent);
+    }catch(Exception e){
+      try{startActivity(new Intent(Intent.ACTION_VIEW,uri).addCategory(Intent.CATEGORY_BROWSABLE));}
+      catch(Exception error){sendCinemaMessage("No app available for this link");}
+    }
+  }
+  private void openCinemaPlatform(String service){
+    if(service==null)return;
+    switch(service){
+      case "netflix":openCinemaExternal("https://www.netflix.com/browse","com.netflix.mediaclient");break;
+      case "crunchyroll":openCinemaExternal("https://www.crunchyroll.com/","com.crunchyroll.crunchyroid");break;
+      case "youtube":openCinemaExternal("https://www.youtube.com/","com.google.android.youtube");break;
+      default:sendCinemaMessage("Unknown streaming platform");
+    }
+  }
+  private final class CinemaBridge {
+    @JavascriptInterface public void getSnapshot(){runOnUiThread(()->sendCinemaSnapshot());}
+    @JavascriptInterface public void chooseVideos(){runOnUiThread(()->{
+      Intent picker=new Intent(Intent.ACTION_OPEN_DOCUMENT);
+      picker.addCategory(Intent.CATEGORY_OPENABLE);
+      picker.setType("video/*");
+      picker.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true);
+      picker.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION|Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+      try{startActivityForResult(picker,PICK_CINEMA);}
+      catch(Exception e){sendCinemaMessage("Video picker is unavailable");}
+    });}
+    @JavascriptInterface public void playVideo(String uri){runOnUiThread(()->playCinemaVideo(uri));}
+    @JavascriptInterface public void closeVideo(){runOnUiThread(()->closeCinemaVideo());}
+    @JavascriptInterface public void updateVideo(String uri,String title,String category,boolean favorite){
+      runOnUiThread(()->{
+        CinemaVideo v=findCinemaVideo(uri);if(v==null)return;
+        v.title=title==null||title.trim().isEmpty()?v.title:title.trim();
+        v.category=category==null||category.trim().isEmpty()?"Other":category.trim();
+        v.favorite=favorite;persistCinema();sendCinemaSnapshot();
+      });
+    }
+    @JavascriptInterface public void removeVideo(String uri){runOnUiThread(()->{
+      if(uri.equals(cinemaPlayingUri))closeCinemaVideo();
+      cinemaVideos.removeIf(v->v.uri.equals(uri));persistCinema();sendCinemaSnapshot();
+    });}
+    @JavascriptInterface public void openPlatform(String service){runOnUiThread(()->openCinemaPlatform(service));}
+    @JavascriptInterface public void openLink(String url){runOnUiThread(()->{
+      String pkg="";
+      try{
+        String host=Uri.parse(url).getHost();
+        if(host!=null){
+          host=host.toLowerCase();
+          if(host.equals("netflix.com")||host.endsWith(".netflix.com"))pkg="com.netflix.mediaclient";
+          else if(host.equals("crunchyroll.com")||host.endsWith(".crunchyroll.com"))pkg="com.crunchyroll.crunchyroid";
+          else if(host.equals("youtube.com")||host.endsWith(".youtube.com")||host.equals("youtu.be"))pkg="com.google.android.youtube";
+        }
+      }catch(Exception ignored){}
+      openCinemaExternal(url,pkg);
+    });}
+  }
+
   @Override protected void onActivityResult(int req,int result,Intent data){
     super.onActivityResult(req,result,data);
     if(req==PICK_AUDIO){if(result==RESULT_OK)importTracks(data);return;}
+    if(req==PICK_CINEMA){if(result==RESULT_OK)importCinemaVideos(data);return;}
     if(req==PICK_MEDIA && fileCallback!=null){
       Uri[] uris=null;
       if(result==RESULT_OK && data!=null){
@@ -282,16 +595,22 @@ public final class MainActivity extends Activity {
     }
   }
   @Override public void onBackPressed(){
+    if(cinemaOverlay!=null){closeCinemaVideo();return;}
     webView.evaluateJavascript("(function(){if(document.getElementById('modalWrap').classList.contains('show')){closeModal()}else if(document.querySelector('.page.active').id!=='home'){setPage('home')}else{return 'exit'}})()",value->{
       if("\"exit\"".equals(value))MainActivity.super.onBackPressed();
     });
   }
-  @Override protected void onPause(){super.onPause();if(webView!=null)webView.onPause();}
+  @Override protected void onPause(){
+    if(cinemaVideoView!=null){saveCinemaProgress();persistCinema();cinemaVideoView.pause();}
+    super.onPause();if(webView!=null)webView.onPause();
+  }
   @Override protected void onResume(){super.onResume();if(webView!=null)webView.onResume();}
   @Override protected void onDestroy(){
     if(fileCallback!=null)fileCallback.onReceiveValue(null);
     if(openingAudio!=null){openingAudio.release();openingAudio=null;}
     stopPlayer();
+    closeCinemaVideo();
+    rootView=null;
     if(webView!=null){webView.destroy();webView=null;}
     super.onDestroy();
   }
