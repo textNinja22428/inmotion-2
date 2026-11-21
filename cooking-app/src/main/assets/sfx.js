@@ -1,11 +1,12 @@
 'use strict';
-// Kitchen Soundscape v1.7 — 18 original, offline-bundled sound effects.
+// Kitchen Soundscape v2 — 18 curated, genuine CC0 Kenney game-menu recordings.
 // Only triggered by user interaction; no ambient background soundtrack.
 (function(){
- const KEY='cooking_rotations_soundscape_v1';
+ const KEY='cooking_rotations_soundscape_jrpg_v2';
  const names=['alert','camera','chop','edit','finish','navigate','open','page','play','pop','random','remove','save','sizzle','sparkle','stop','tap','toggle'];
- const urls=Object.fromEntries(names.map(n=>[n,'sfx/'+n+'.mp3']));
- let cfg={enabled:true,volume:45};
+ const urls=Object.fromEntries(names.map(n=>[n,'jrpg/'+n+'.wav']));
+ let cfg={enabled:true,volume:35};
+ try{let old=JSON.parse(localStorage.getItem('cooking_rotations_soundscape_v1')||'null');if(old?.enabled===false)cfg.enabled=false;}catch(e){}
  try {const old=JSON.parse(localStorage.getItem(KEY)||'null');if(old&&typeof old==='object'){cfg.enabled=old.enabled!==false;cfg.volume=Math.max(0,Math.min(100,Number(old.volume)||0));}}catch(e){}
  let ctx=null,bus=null,loaded={},loading=false;
  let lastSound='',lastWhen=0;
@@ -49,19 +50,27 @@
   if(!force&&!cfg.enabled)return;
   if(!urls[n])n='tap';
   const now=performance.now();
-  if(n===lastSound&&now-lastWhen<90)return;
+  if(n===lastSound&&now-lastWhen<145)return;
   lastSound=n;lastWhen=now;
   const ac=context();
   if(!ac)return;
   if(ac.state==='suspended')ac.resume().catch(()=>{});
-  const level=(cfg.volume/100)*.31*duck();
+  const level=(cfg.volume/100)*.22*duck();
   if(level<=.001)return;
   const audio=loaded[n];
   if(audio){
    try{
     const src=ac.createBufferSource();src.buffer=audio;
     const gain=ac.createGain();gain.gain.value=level;
-    src.connect(gain);gain.connect(bus);src.start();
+    src.connect(gain);gain.connect(bus);
+    // Subtle high-end UI ambience: low-volume single echo only on special interactions.
+    if(['open','finish','save','random','sparkle'].includes(n)){
+      const delay=ac.createDelay(.3);delay.delayTime.value=.088;
+      const wet=ac.createGain();wet.gain.value=.11;
+      gain.connect(delay);delay.connect(wet);wet.connect(bus);
+      src.addEventListener('ended',()=>setTimeout(()=>{try{delay.disconnect();wet.disconnect()}catch(e){}},300),{once:true});
+    }
+    src.start();
     src.addEventListener('ended',()=>{src.disconnect();gain.disconnect()},{once:true});
    }catch(e){}
   }else{
@@ -99,10 +108,10 @@
   if(id==='sfxPreview'||id==='sfxEnabled'||id==='sfxVolume')return null;
   if(id==='soundQuickToggle')return null;
   if(action.tab)return 'navigate';
-  if(el.closest('.rotation-card'))return 'sizzle';
+  if(el.closest('.rotation-card'))return 'open';
   if(el.closest('.gallery-item')||el.closest('.media-picker'))return 'camera';
   if(el.closest('.mood-options'))return 'pop';
-  if(el.closest('.pill')||el.closest('.cinema-shelf'))return 'pop';
+  if(el.closest('.pill')||el.closest('.cinema-shelf'))return 'toggle';
   if(el.closest('.cinema-service'))return 'play';
   if(action.cinemaVideo==='play'||action.cinemaLink==='play')return 'play';
   if(action.cinemaVideo==='remove'||action.cinemaLink==='remove')return 'remove';
@@ -117,10 +126,10 @@
   if(id==='musicShuffle'||id==='musicRepeat'||id==='musicLocalTab'||id==='musicYoutubeTab'||id==='cinemaOfflineTab'||id==='cinemaLinksTab')return 'toggle';
   if(el.classList.contains('modal-close')||el.closest('.modal-close'))return 'stop';
   if(el.closest('.entry-tools'))return 'page';
-  if(el.matches('button[type=submit]'))return 'tap';
+  if(el.matches('button[type=submit]'))return null;
   if(el.classList.contains('text-button'))return 'sparkle';
   if(el.classList.contains('ghost'))return 'edit';
-  return 'tap';
+  return el.classList.contains('primary')?'tap':null;
  }
  function init(){
   preload();updateQuick();
