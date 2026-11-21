@@ -40,6 +40,8 @@ jobs:
           node --check cooking-app/src/main/assets/app.js
           node --check cooking-app/src/main/assets/music.js
           node --check cooking-app/src/main/assets/cinema.js
+          node --check cooking-app/src/main/assets/sfx.js
+          for sound in tap navigate open sizzle chop pop random save page camera sparkle edit play stop remove toggle finish alert; do test -s "cooking-app/src/main/assets/sfx/$sound.mp3"; done
       - name: Build Android APK
         run: gradle --no-daemon :cooking-app:assembleDebug
       - uses: actions/upload-artifact@v4

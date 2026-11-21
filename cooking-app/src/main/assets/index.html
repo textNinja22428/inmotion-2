@@ -4,7 +4,7 @@
 <div id="splash" class="splash" aria-label="Opening Cooking Rotations"><img src="splash.jpg" alt="Anime friends having fun cooking"/><div class="splash-overlay"><div class="splash-title">Cooking <em>Rotations</em></div><div class="splash-caption">A little joy, one meal at a time.</div><div class="splash-loader"><span></span></div><button class="skip-splash" onclick="skipSplash()">Skip ›</button></div></div>
 <div class="video-wall"><video id="ambient" autoplay muted playsinline loop preload="metadata"><source src="1118.mp4" type="video/mp4"/></video><div class="video-shade"></div></div>
 <div class="app-shell">
-<header class="topbar"><div class="brand-mark"><img src="brand.png" alt="Cooking Rotations icon"/></div><div class="brand-text"><strong>Cooking Rotations</strong><small>MAKE DINNER A HAPPY RITUAL</small></div><button class="round icon" id="settingsButton" title="Settings">⚙</button></header>
+<header class="topbar"><div class="brand-mark"><img src="brand.png" alt="Cooking Rotations icon"/></div><div class="brand-text"><strong>Cooking Rotations</strong><small>MAKE DINNER A HAPPY RITUAL</small></div><button class="round icon" id="soundQuickToggle" title="Mute kitchen effects" aria-label="Toggle kitchen sound effects">🔊</button><button class="round icon" id="settingsButton" title="Settings">⚙</button></header>
 <main id="pages">
 <section id="home" class="page active">
  <div class="hero glass"><div><span class="eyebrow">YOUR LITTLE KITCHEN ✨</span><h1>What's cooking<br/><i>tonight?</i></h1><p>Five feel-good meals. Zero overthinking.</p></div><div class="hero-emoji">🍳</div><div class="hero-actions"><button class="primary" id="surpriseMe">✦ Pick for me</button><button class="ghost" id="quickJournal">＋ Journal entry</button></div></div>
@@ -76,4 +76,4 @@
 <div class="mini-music" id="miniMusic" hidden><span class="mini-musical">♫</span><button id="miniMusicTitle" class="mini-name">Cooking Radio</button><button id="miniPrev" class="mini-icon" title="Previous track">‹</button><button id="miniToggle" class="mini-icon" title="Play or pause">▶</button><button id="miniNext" class="mini-icon" title="Next track">›</button></div>
 <div class="toast" id="toast"></div>
 <input id="importFile" type="file" accept="application/json" hidden/>
-<script src="app.js"></script><script src="music.js"></script><script src="cinema.js"></script></body></html>
+<script src="app.js"></script><script src="music.js"></script><script src="cinema.js"></script><script src="sfx.js"></script></body></html>
