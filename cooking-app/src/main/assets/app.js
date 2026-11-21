@@ -96,12 +96,12 @@ window.skipSplash=function(){
  }catch(e){}
  ambient.play().catch(()=>{});
  $('splash').classList.add('gone');
- // Keep the splash crossfade (0.85s) separate from the full 5 seconds of visible footage.
+ // Keep the splash crossfade (0.85s) separate from the full 7 seconds of visible footage.
  welcomeUiTimer=setTimeout(()=>{
   document.body.classList.remove('intro-pending');
   document.body.classList.add('intro-revealed');
   welcomeUiTimer=null;
- },5850);
+ },7850);
 };
 function initSplash(){
  const ambient=$('ambient');
