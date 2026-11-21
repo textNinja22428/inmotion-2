@@ -95,6 +95,13 @@ window.openSettings=function(){showModal(`${modalHeader('Kitchen Settings','Make
 // Only after the video has its own moment do the readable menu surfaces fade in.
 let welcomeStarted=false;
 let welcomeUiTimer=null;
+let welcomeLastTap=-1000;
+function finishWelcome(){
+ if(welcomeUiTimer!==null){clearTimeout(welcomeUiTimer);welcomeUiTimer=null;}
+ document.body.classList.remove('intro-pending');
+ document.body.classList.add('intro-revealed');
+ if(window.NativeIntro)try{NativeIntro.stopWelcome()}catch(e){}
+}
 window.skipSplash=function(){
  if(welcomeStarted)return;
  welcomeStarted=true;
@@ -108,15 +115,20 @@ window.skipSplash=function(){
  // Start the supplied Mutfakta Şov theme exactly as the door video crossfade begins.
  if(window.NativeIntro)try{NativeIntro.startWelcome()}catch(e){}
  // Keep the splash crossfade (0.85s) separate from the full 7 seconds of visible footage.
- welcomeUiTimer=setTimeout(()=>{
-  document.body.classList.remove('intro-pending');
-  document.body.classList.add('intro-revealed');
-  if(window.NativeIntro)try{NativeIntro.stopWelcome()}catch(e){}
-  welcomeUiTimer=null;
- },7850);
+ welcomeUiTimer=setTimeout(finishWelcome,7850);
 };
 function initSplash(){
  const ambient=$('ambient');
+ // Hidden gesture: two taps anywhere on the unobstructed video skip straight to the menu.
+ // The splash itself cannot accidentally skip; the UI stays untouched on a single tap.
+ document.addEventListener('pointerup',event=>{
+  if(!welcomeStarted||!document.body.classList.contains('intro-pending'))return;
+  if(!$('splash').classList.contains('gone'))return;
+  if(event.pointerType==='mouse'&&event.button!==0)return;
+  const now=performance.now();
+  if(now-welcomeLastTap<420){welcomeLastTap=-1000;finishWelcome();}
+  else welcomeLastTap=now;
+ },true);
  // The opening video should begin from its first frame AFTER the splash.
  ambient.pause();
  setTimeout(skipSplash,3300);
