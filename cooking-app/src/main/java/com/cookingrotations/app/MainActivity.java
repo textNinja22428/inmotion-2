@@ -5,6 +5,18 @@ import android.content.ActivityNotFoundException;
 import android.content.ClipData;
 import android.content.Context;
 import android.content.Intent;
+import android.util.Log;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
+import java.util.Set;
+import java.util.Collections;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import androidx.webkit.WebViewCompat;
+import androidx.webkit.WebViewFeature;
 import android.content.SharedPreferences;
 import android.content.res.AssetFileDescriptor;
 import android.database.Cursor;
@@ -52,6 +64,10 @@ public final class MainActivity extends Activity {
   private static final int PICK_MEDIA = 1106;
   private static final int PICK_AUDIO = 1107;
   private static final int PICK_CINEMA = 1108;
+  private static final int PICK_HUNT_BACKUP_EXPORT = 1110;
+  private static final String HUNT_APP_ORIGIN="https://appassets.androidplatform.net";
+  private final ExecutorService huntVaultExecutor=Executors.newSingleThreadExecutor();
+  private HuntStorageBridge huntVault;
   private String pendingAudioScope="legacy";
   private String pendingVideoScope="legacy";
   private MediaPlayer studioPlayer=null;
@@ -149,6 +165,7 @@ public final class MainActivity extends Activity {
         return true;
       }
     });
+    setupHuntVaultMessageChannel();
     webView.addJavascriptInterface(new MusicBridge(),"NativeMusic");
     webView.addJavascriptInterface(new IntroBridge(),"NativeIntro");
     webView.addJavascriptInterface(new CinemaBridge(),"NativeCinema");
@@ -440,6 +457,100 @@ public final class MainActivity extends Activity {
       huntBeginCue=null;
     }
   }
+
+  private void setupHuntVaultMessageChannel(){
+    if(!WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)){
+      Log.e("HUNT_VAULT","WEB_MESSAGE_LISTENER_UNSUPPORTED; vault unavailable, no insecure fallback.");
+      return;
+    }
+    huntVault=new HuntStorageBridge(getApplicationContext());
+    Set<String> origins=Collections.singleton(HUNT_APP_ORIGIN);
+    WebViewCompat.addWebMessageListener(webView,"HuntVaultChannel",origins,
+      (view,message,sourceOrigin,isMainFrame,replyProxy)->{
+        if(!isMainFrame||sourceOrigin==null||!HUNT_APP_ORIGIN.equals(sourceOrigin.toString()))return;
+        String raw=message.getData();
+        if(raw==null||raw.length()>33*1024*1024)return;
+        huntVaultExecutor.execute(()->{
+          String requestId="";
+          JSONObject response=new JSONObject();
+          try{
+            JSONObject req=new JSONObject(raw);
+            requestId=req.getString("reqId");
+            if(requestId.length()>120||requestId.isEmpty())throw new IllegalArgumentException("BAD_REQ_ID");
+            String operation=req.getString("action");
+            String payload=req.optString("payload","");
+            response.put("reqId",requestId);
+            String result;
+            switch(operation){
+              case "LOAD_LEDGER":
+                response.put("result",huntVault.loadLedgerWithRecovery());
+                break;
+              case "SAVE_LEDGER":
+                result=huntVault.saveLedgerAtomic(payload);
+                addNativeResult(response,result);
+                break;
+              case "SEAL_LEGACY":
+                result=huntVault.sealLegacySnapshotOnce(payload);
+                addNativeResult(response,result);
+                break;
+              case "VAULT_STATUS":
+                addNativeResult(response,huntVault.getVaultStatus());
+                break;
+              case "EXPORT_BACKUP_DIALOG":
+                // No external storage write without Android's user-facing document picker.
+                webView.post(()->launchHuntBackupExport());
+                response.put("result",new JSONObject("{\\\"ok\\\":true}"));
+                break;
+              default:
+                response.put("error","UNKNOWN_ACTION");
+            }
+          }catch(Exception e){
+            try{
+              response.put("reqId",requestId);
+              response.put("error","MALFORMED_BRIDGE_REQUEST");
+            }catch(Exception ignored){}
+          }
+          String reply=response.toString();
+          webView.post(()->{
+            try{replyProxy.postMessage(reply);}catch(Exception ignored){}
+          });
+        });
+      });
+  }
+  private static void addNativeResult(JSONObject reply,String raw)throws Exception{
+    JSONObject result=new JSONObject(raw);
+    if(result.optBoolean("ok",false))reply.put("result",result);
+    else reply.put("error",result.optString("error","NATIVE_FAILURE"));
+  }
+  private void launchHuntBackupExport(){
+    if(huntVault==null)return;
+    String stamp=new SimpleDateFormat("yyyyMMdd_HHmm",Locale.US).format(new Date());
+    Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);
+    i.addCategory(Intent.CATEGORY_OPENABLE);
+    i.setType("application/json");
+    i.putExtra(Intent.EXTRA_TITLE,"HUNT_VAULT_BACKUP_"+stamp+".json");
+    try{startActivityForResult(i,PICK_HUNT_BACKUP_EXPORT);}
+    catch(Exception e){Log.e("HUNT_VAULT","Export file picker unavailable",e);}
+  }
+  private void saveExternalBackup(Uri uri){
+    huntVaultExecutor.execute(()->{
+      try {
+        String export=huntVault.buildExportBundle(System.currentTimeMillis());
+        if(export.startsWith("{\\\"ok\\\":false"))throw new Exception("Nothing available for export");
+        try(OutputStream out=getContentResolver().openOutputStream(uri,"wt")){
+          if(out==null)throw new Exception("Cannot open export destination");
+          out.write(export.getBytes(StandardCharsets.UTF_8));
+          out.flush();
+        }
+        Log.i("HUNT_VAULT","External backup exported");
+        runOnUiThread(()->android.widget.Toast.makeText(this,"HUNT backup saved",android.widget.Toast.LENGTH_SHORT).show());
+      }catch(Exception e){
+        Log.e("HUNT_VAULT","External backup failed",e);
+        runOnUiThread(()->android.widget.Toast.makeText(this,"HUNT backup failed",android.widget.Toast.LENGTH_LONG).show());
+      }
+    });
+  }
+
   private final class HuntAudioBridge{
     @JavascriptInterface public void playBegin(){runOnUiThread(()->playHuntBeginCue());}
   }
@@ -804,6 +915,7 @@ public final class MainActivity extends Activity {
 
   @Override protected void onActivityResult(int req,int result,Intent data){
     super.onActivityResult(req,result,data);
+    if(req==PICK_HUNT_BACKUP_EXPORT){if(result==RESULT_OK&&data!=null&&data.getData()!=null)saveExternalBackup(data.getData());return;}
     if(req==PICK_AUDIO){
       String scope=pendingAudioScope;pendingAudioScope="legacy";
       if(result==RESULT_OK)importTracks(data);
@@ -844,6 +956,7 @@ public final class MainActivity extends Activity {
     stopWelcomeAudio();
     stopPlayer();
     stopStudioPlayer();
+    huntVaultExecutor.shutdown();
     if(huntBeginCue!=null){try{huntBeginCue.release();}catch(Exception ignored){}huntBeginCue=null;}
     closeCinemaVideo();
     rootView=null;
