@@ -52,6 +52,10 @@ public final class MainActivity extends Activity {
   private static final int PICK_MEDIA = 1106;
   private static final int PICK_AUDIO = 1107;
   private static final int PICK_CINEMA = 1108;
+  private String pendingAudioScope="legacy";
+  private String pendingVideoScope="legacy";
+  private MediaPlayer studioPlayer=null;
+  private String studioCurrentUri="";
   private WebView webView;
   private ValueCallback<Uri[]> fileCallback;
   private MediaPlayer openingAudio;
@@ -147,6 +151,7 @@ public final class MainActivity extends Activity {
     webView.addJavascriptInterface(new MusicBridge(),"NativeMusic");
     webView.addJavascriptInterface(new IntroBridge(),"NativeIntro");
     webView.addJavascriptInterface(new CinemaBridge(),"NativeCinema");
+    webView.addJavascriptInterface(new StudioPlaybackBridge(),"NativeStudioPlayer");
     rootView=new FrameLayout(this);
     rootView.addView(webView,new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
     setContentView(rootView);
@@ -321,6 +326,7 @@ public final class MainActivity extends Activity {
     audioManager.abandonAudioFocus(focusListener);
   }
   private void playSong(String uri){
+    stopStudioPlayer();
     Song s=getSong(uri);
     if(s==null){ webMessage("Song not found — please add it again.");return; }
     stopPlayer();
@@ -366,14 +372,61 @@ public final class MainActivity extends Activity {
     for(int i=0;i<tracks.size();i++)if(tracks.get(i).uri.equals(currentSong)){idx=i;break;}
     playSong(tracks.get((idx-1+tracks.size())%tracks.size()).uri);
   }
+  private void notifyHuntSelection(String kind,String scope,Intent selected){
+    JSONArray items=new JSONArray();
+    if(selected!=null){
+      ArrayList<Uri> uris=new ArrayList<>();
+      ClipData cd=selected.getClipData();
+      if(cd!=null){for(int i=0;i<cd.getItemCount();i++)uris.add(cd.getItemAt(i).getUri());}
+      else if(selected.getData()!=null)uris.add(selected.getData());
+      for(Uri uri:uris){
+        try{JSONObject obj=new JSONObject();obj.put("uri",uri.toString());obj.put("title",getDisplayName(uri));items.put(obj);}
+        catch(Exception ignored){}
+      }
+    }
+    if(webView!=null){
+      String js="window.onHuntFilePicked&&window.onHuntFilePicked("+JSONObject.quote(kind)+","+JSONObject.quote(scope)+","+items.toString()+")";
+      webView.evaluateJavascript(js,null);
+    }
+  }
+  private void stopStudioPlayer(){
+    studioCurrentUri="";
+    MediaPlayer p=studioPlayer;studioPlayer=null;
+    if(p!=null){try{p.stop();}catch(Exception ignored){}try{p.release();}catch(Exception ignored){}}
+  }
+  private void playStudioPreview(String rawUri){
+    if(rawUri==null||!rawUri.startsWith("content://"))return;
+    if(studioPlayer!=null&&rawUri.equals(studioCurrentUri)){
+      try{if(studioPlayer.isPlaying())studioPlayer.pause();else studioPlayer.start();}
+      catch(Exception e){stopStudioPlayer();}
+      return;
+    }
+    stopStudioPlayer();
+    pauseMusic();
+    try {
+      MediaPlayer mp=new MediaPlayer();studioPlayer=mp;studioCurrentUri=rawUri;
+      mp.setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build());
+      mp.setDataSource(this,Uri.parse(rawUri));
+      mp.setOnPreparedListener(p->{if(studioPlayer==p){try{p.start();}catch(Exception ignored){}}});
+      mp.setOnCompletionListener(p->{if(studioPlayer==p)stopStudioPlayer();});
+      mp.setOnErrorListener((p,a,b)->{if(studioPlayer==p)stopStudioPlayer();return true;});
+      mp.prepareAsync();
+    } catch(Exception e){stopStudioPlayer();}
+  }
+  private final class StudioPlaybackBridge {
+    @JavascriptInterface public void toggle(String rawUri){runOnUiThread(()->playStudioPreview(rawUri));}
+    @JavascriptInterface public void stop(){runOnUiThread(()->stopStudioPlayer());}
+  }
   private final class MusicBridge {
     @JavascriptInterface public void getSnapshot(){runOnUiThread(()->{webReady=true;pushState();});}
-    @JavascriptInterface public void chooseSongs(){runOnUiThread(()->{
+    @JavascriptInterface public void chooseSongs(){chooseSongsFor("shred");}
+    @JavascriptInterface public void chooseSongsFor(String scope){runOnUiThread(()->{
+      pendingAudioScope=scope==null?"legacy":scope;
       Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);
       i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("audio/*");
       i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true);
       i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION|Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
-      try{startActivityForResult(i,PICK_AUDIO);}catch(Exception e){webMessage("File picker unavailable");}
+      try{startActivityForResult(i,PICK_AUDIO);}catch(Exception e){pendingAudioScope="legacy";webMessage("File picker unavailable");}
     });}
     @JavascriptInterface public void playTrack(String id){runOnUiThread(()->playSong(id));}
     @JavascriptInterface public void pause(){runOnUiThread(()->pauseMusic());}
@@ -678,14 +731,16 @@ public final class MainActivity extends Activity {
       },"HUNT-thumbnail").start();
     }
 
-    @JavascriptInterface public void chooseVideos(){runOnUiThread(()->{
+    @JavascriptInterface public void chooseVideos(){chooseVideosFor("shred");}
+    @JavascriptInterface public void chooseVideosFor(String scope){runOnUiThread(()->{
+      pendingVideoScope=scope==null?"legacy":scope;
       Intent picker=new Intent(Intent.ACTION_OPEN_DOCUMENT);
       picker.addCategory(Intent.CATEGORY_OPENABLE);
       picker.setType("video/*");
       picker.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true);
       picker.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION|Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
       try{startActivityForResult(picker,PICK_CINEMA);}
-      catch(Exception e){sendCinemaMessage("Video picker is unavailable");}
+      catch(Exception e){pendingVideoScope="legacy";sendCinemaMessage("Video picker is unavailable");}
     });}
     @JavascriptInterface public void playVideo(String uri){runOnUiThread(()->playCinemaVideo(uri));}
     @JavascriptInterface public void closeVideo(){runOnUiThread(()->closeCinemaVideo());}
@@ -719,8 +774,18 @@ public final class MainActivity extends Activity {
 
   @Override protected void onActivityResult(int req,int result,Intent data){
     super.onActivityResult(req,result,data);
-    if(req==PICK_AUDIO){if(result==RESULT_OK)importTracks(data);return;}
-    if(req==PICK_CINEMA){if(result==RESULT_OK)importCinemaVideos(data);return;}
+    if(req==PICK_AUDIO){
+      String scope=pendingAudioScope;pendingAudioScope="legacy";
+      if(result==RESULT_OK)importTracks(data);
+      notifyHuntSelection("audio",scope,result==RESULT_OK?data:null);
+      return;
+    }
+    if(req==PICK_CINEMA){
+      String scope=pendingVideoScope;pendingVideoScope="legacy";
+      if(result==RESULT_OK)importCinemaVideos(data);
+      notifyHuntSelection("video",scope,result==RESULT_OK?data:null);
+      return;
+    }
     if(req==PICK_MEDIA && fileCallback!=null){
       Uri[] uris=null;
       if(result==RESULT_OK && data!=null){
@@ -748,6 +813,7 @@ public final class MainActivity extends Activity {
     if(openingAudio!=null){openingAudio.release();openingAudio=null;}
     stopWelcomeAudio();
     stopPlayer();
+    stopStudioPlayer();
     closeCinemaVideo();
     rootView=null;
     if(webView!=null){webView.destroy();webView=null;}
