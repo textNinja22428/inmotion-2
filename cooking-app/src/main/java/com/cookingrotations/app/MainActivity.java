@@ -59,6 +59,7 @@ public final class MainActivity extends Activity {
   private WebView webView;
   private ValueCallback<Uri[]> fileCallback;
   private MediaPlayer openingAudio;
+  private MediaPlayer huntBeginCue;
   private MediaPlayer welcomeAudio;
   private long welcomeAudioStartedAt=0L;
   private MediaPlayer player;
@@ -152,6 +153,7 @@ public final class MainActivity extends Activity {
     webView.addJavascriptInterface(new IntroBridge(),"NativeIntro");
     webView.addJavascriptInterface(new CinemaBridge(),"NativeCinema");
     webView.addJavascriptInterface(new StudioPlaybackBridge(),"NativeStudioPlayer");
+    webView.addJavascriptInterface(new HuntAudioBridge(),"NativeHuntAudio");
     rootView=new FrameLayout(this);
     rootView.addView(webView,new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
     setContentView(rootView);
@@ -412,6 +414,34 @@ public final class MainActivity extends Activity {
       mp.setOnErrorListener((p,a,b)->{if(studioPlayer==p)stopStudioPlayer();return true;});
       mp.prepareAsync();
     } catch(Exception e){stopStudioPlayer();}
+  }
+    private void playHuntBeginCue(){
+    // Dedicated native SFX guarantees the Ritual cue even when WebView audio
+    // focus changes or another HTML5 audio element is active.
+    MediaPlayer previous=huntBeginCue;huntBeginCue=null;
+    if(previous!=null){try{previous.stop();}catch(Exception ignored){}try{previous.release();}catch(Exception ignored){}}
+    AssetFileDescriptor afd=null;MediaPlayer mp=null;
+    try{
+      afd=getAssets().openFd("hunt_begin.wav");
+      mp=new MediaPlayer();
+      mp.setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA)
+          .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build());
+      mp.setDataSource(afd.getFileDescriptor(),afd.getStartOffset(),afd.getLength());
+      afd.close();afd=null;
+      final MediaPlayer own=mp;
+      mp.setOnCompletionListener(m->{if(huntBeginCue==own)huntBeginCue=null;try{m.release();}catch(Exception ignored){}});
+      mp.prepare();
+      mp.setVolume(1f,1f);
+      huntBeginCue=mp;
+      mp.start();
+    }catch(Exception e){
+      if(afd!=null)try{afd.close();}catch(Exception ignored){}
+      if(mp!=null)try{mp.release();}catch(Exception ignored){}
+      huntBeginCue=null;
+    }
+  }
+  private final class HuntAudioBridge{
+    @JavascriptInterface public void playBegin(){runOnUiThread(()->playHuntBeginCue());}
   }
   private final class StudioPlaybackBridge {
     @JavascriptInterface public void toggle(String rawUri){runOnUiThread(()->playStudioPreview(rawUri));}
@@ -814,6 +844,7 @@ public final class MainActivity extends Activity {
     stopWelcomeAudio();
     stopPlayer();
     stopStudioPlayer();
+    if(huntBeginCue!=null){try{huntBeginCue.release();}catch(Exception ignored){}huntBeginCue=null;}
     closeCinemaVideo();
     rootView=null;
     if(webView!=null){webView.destroy();webView=null;}
