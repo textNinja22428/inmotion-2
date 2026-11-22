@@ -12,6 +12,11 @@ import android.graphics.Color;
 import android.media.AudioAttributes;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
+import android.media.MediaMetadataRetriever;
+import android.graphics.Bitmap;
+import android.util.Base64;
+import android.os.Build;
+import java.io.ByteArrayOutputStream;
 import android.net.Uri;
 import android.view.Gravity;
 import android.view.View;
@@ -632,6 +637,47 @@ public final class MainActivity extends Activity {
   }
   private final class CinemaBridge {
     @JavascriptInterface public void getSnapshot(){runOnUiThread(()->sendCinemaSnapshot());}
+    // Return an actual frame from the user's local video. Never upload it.
+    @JavascriptInterface public void requestVideoThumbnail(String rawUri){
+      if(rawUri==null || !rawUri.startsWith("content://") || rawUri.length()>2048)return;
+      new Thread(()->{
+        String dataUrl="";
+        MediaMetadataRetriever retriever=new MediaMetadataRetriever();
+        try{
+          retriever.setDataSource(MainActivity.this,Uri.parse(rawUri));
+          Bitmap frame=null;
+          if(Build.VERSION.SDK_INT>=27){
+            try{frame=retriever.getScaledFrameAtTime(450000L,MediaMetadataRetriever.OPTION_CLOSEST_SYNC,480,270);}
+            catch(Exception ignored){}
+          }
+          if(frame==null)frame=retriever.getFrameAtTime(450000L,MediaMetadataRetriever.OPTION_CLOSEST_SYNC);
+          if(frame==null)frame=retriever.getFrameAtTime();
+          if(frame!=null){
+            int w=frame.getWidth(),h=frame.getHeight();
+            if(w>0 && h>0){
+              int dw=Math.min(480,w),dh=Math.max(1,Math.round((float)h*dw/w));
+              if(dh>300){dw=Math.max(1,Math.round((float)dw*300/dh));dh=300;}
+              Bitmap thumb=Bitmap.createScaledBitmap(frame,dw,dh,true);
+              ByteArrayOutputStream output=new ByteArrayOutputStream();
+              thumb.compress(Bitmap.CompressFormat.JPEG,78,output);
+              dataUrl="data:image/jpeg;base64,"+Base64.encodeToString(output.toByteArray(),Base64.NO_WRAP);
+              if(thumb!=frame)thumb.recycle();
+            }
+            frame.recycle();
+          }
+        }catch(Exception ignored){
+          // A revoked content provider permission means this file must be reimported.
+        }finally{
+          try{retriever.release();}catch(Exception ignored){}
+        }
+        final String payload=dataUrl;
+        runOnUiThread(()->{
+          if(webView!=null)webView.evaluateJavascript(
+            "window.onNativeVideoThumbnail&&window.onNativeVideoThumbnail("+JSONObject.quote(rawUri)+","+JSONObject.quote(payload)+")",null);
+        });
+      },"HUNT-thumbnail").start();
+    }
+
     @JavascriptInterface public void chooseVideos(){runOnUiThread(()->{
       Intent picker=new Intent(Intent.ACTION_OPEN_DOCUMENT);
       picker.addCategory(Intent.CATEGORY_OPENABLE);
