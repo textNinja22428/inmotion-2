@@ -68,6 +68,7 @@ public final class MainActivity extends Activity {
   private static final String HUNT_APP_ORIGIN="https://appassets.androidplatform.net";
   private final ExecutorService huntVaultExecutor=Executors.newSingleThreadExecutor();
   private HuntStorageBridge huntVault;
+  private String pendingVaultExportLegacy="";
   private String pendingAudioScope="legacy";
   private String pendingVideoScope="legacy";
   private MediaPlayer studioPlayer=null;
@@ -498,8 +499,16 @@ public final class MainActivity extends Activity {
                 break;
               case "EXPORT_BACKUP_DIALOG":
                 // No external storage write without Android's user-facing document picker.
+                if(!payload.isEmpty()){
+                  JSONObject checkLegacy=new JSONObject(payload);
+                  if(!(checkLegacy.opt("hunts") instanceof JSONArray)||!(checkLegacy.opt("skills") instanceof JSONObject))
+                    throw new IllegalArgumentException("INVALID_EXPORT_LEGACY");
+                  pendingVaultExportLegacy=payload;
+                } else pendingVaultExportLegacy="";
                 webView.post(()->launchHuntBackupExport());
-                response.put("result",new JSONObject("{\\\"ok\\\":true}"));
+                JSONObject exportAccepted=new JSONObject();
+                exportAccepted.put("ok",true);
+                response.put("result",exportAccepted);
                 break;
               default:
                 response.put("error","UNKNOWN_ACTION");
@@ -535,8 +544,9 @@ public final class MainActivity extends Activity {
   private void saveExternalBackup(Uri uri){
     huntVaultExecutor.execute(()->{
       try {
-        String export=huntVault.buildExportBundle(System.currentTimeMillis());
-        if(export.startsWith("{\\\"ok\\\":false"))throw new Exception("Nothing available for export");
+        String liveSnapshot=pendingVaultExportLegacy;
+        String export=huntVault.buildExportBundle(System.currentTimeMillis(),liveSnapshot);
+        if(new JSONObject(export).optBoolean("ok",true)==false)throw new Exception("Nothing available for export");
         try(OutputStream out=getContentResolver().openOutputStream(uri,"wt")){
           if(out==null)throw new Exception("Cannot open export destination");
           out.write(export.getBytes(StandardCharsets.UTF_8));
