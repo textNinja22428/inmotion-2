@@ -298,7 +298,7 @@ public final class MainActivity extends Activity {
     }
     persistMusic();
     pushState();
-    if(added>0)webMessage(added+" song"+(added>1?"s":"")+" added to your library ♪");
+    // Scoped HUNT import confirmation comes from onHuntFilePicked.
   }
   private JSONObject state() {
     JSONObject o=new JSONObject(); JSONArray songs=new JSONArray();
@@ -340,7 +340,7 @@ public final class MainActivity extends Activity {
         .setUsage(AudioAttributes.USAGE_MEDIA).build());
       mp.setDataSource(this,Uri.parse(s.uri));
       mp.setOnPreparedListener(ready -> { if(player!=ready)return;playerReady=true;ready.start(); playing=true;pushState(); });
-      mp.setOnCompletionListener(done -> { if(player==done){ playing=false;if(repeat)playSong(currentSong);else nextSong(false); } });
+      mp.setOnCompletionListener(done -> { if(player==done){ playing=false;if(repeat)playSong(currentSong);else pushState(); } });
       mp.setOnErrorListener((failed,what,extra) -> {if(player==failed){stopPlayer();pushState();webMessage("Can't play this file. Re-add it from your device.");}return true;});
       mp.prepareAsync();
     }catch(Exception e){stopPlayer();webMessage("Couldn't open this song. Re-add the file.");}
@@ -518,7 +518,7 @@ public final class MainActivity extends Activity {
     }
     persistCinema();
     sendCinemaSnapshot();
-    if(count>0)sendCinemaMessage(count+" offline video"+(count==1?"":"s")+" added 🍿");
+    // Scoped HUNT import confirmation comes from onHuntFilePicked.
   }
   private void saveCinemaProgress(){
     if(cinemaVideoView==null||cinemaPlayingUri.isEmpty())return;
