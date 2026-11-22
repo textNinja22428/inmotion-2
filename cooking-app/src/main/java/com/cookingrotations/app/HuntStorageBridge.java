@@ -134,7 +134,7 @@ public final class HuntStorageBridge {
         success("COMMITTED",rev+1):failure("SAVE_VERIFY_FAILED");
     }catch(Exception ignored){return failure("SAVE_FAILED");}
   }
-  public synchronized String buildExportBundle(long timeMillis){
+  public synchronized String buildExportBundle(long timeMillis,String liveLegacyRaw){
     try{
       String now=loadLedgerWithRecovery(),old=read(legacy);
       if(now.isEmpty()&&(old==null||old.isEmpty()))return failure("NOTHING_TO_EXPORT");
@@ -146,6 +146,12 @@ public final class HuntStorageBridge {
       out.put("v17LedgerRaw",now);
       out.put("v17LedgerSha256",now.isEmpty()?"":sha(now));
       out.put("v16LegacyRaw",old==null?"":old);
+      if(liveLegacyRaw!=null&&!liveLegacyRaw.isEmpty()){
+        JSONObject live=new JSONObject(liveLegacyRaw);
+        if(!(live.opt("hunts") instanceof JSONArray)||!(live.opt("skills") instanceof JSONObject))return failure("INVALID_LIVE_LEGACY");
+        out.put("v16CurrentRaw",liveLegacyRaw);
+        out.put("v16CurrentSha256",sha(liveLegacyRaw));
+      }
       return out.toString(2);
     }catch(Exception ignored){return failure("EXPORT_FAILED");}
   }
