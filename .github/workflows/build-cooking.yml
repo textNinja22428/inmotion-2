@@ -2,7 +2,7 @@ name: Build Cooking Rotations APK
 on:
   workflow_dispatch:
   push:
-    branches: [cooking-rotations-standalone, hunt-native-thumbnails, hunt-begin-sound-v16]
+    branches: [cooking-rotations-standalone, hunt-native-thumbnails, hunt-begin-sound-v16, hunt-v17-native-vault]
 jobs:
   android:
     runs-on: ubuntu-latest
