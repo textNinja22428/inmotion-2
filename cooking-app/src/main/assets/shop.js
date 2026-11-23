@@ -138,7 +138,6 @@
    title.innerHTML='<div class="shop-status-count"><strong>'+done+' / '+buy.length+'</strong><span>items collected</span></div>'+
      '<div class="shop-status-progress"><i style="width:'+(buy.length?Math.round(done/buy.length*100):0)+'%"></i></div>'+
      '<p>'+owned+' already in your pantry · '+selectedCount()+' rotation'+(selectedCount()===1?'':'s')+' selected</p>';
-   $('shopBoughtCount').textContent=done?'('+done+')':'';
  }
  function itemRow(i,idx,type){
    const checked=!!state.checked[i.key];
