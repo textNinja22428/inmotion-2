@@ -12,6 +12,45 @@
  <div id="rotationList" class="rotation-list"></div>
  <div class="mini-insight glass" id="homeInsight"></div>
 </section>
+
+<section id="shop" class="page">
+ <div class="page-heading">
+  <span class="eyebrow">GOOD FOOD STARTS WITH A GOOD LIST ✨</span>
+  <h1>Market Run <span>🛒</span></h1>
+  <p>Pick your meals. Shop once. Enjoy the evening.</p>
+ </div>
+ <div class="shop-intro glass">
+  <div class="shop-basket-illustration">🧺<span>✦</span></div>
+  <div class="shop-intro-copy"><span class="eyebrow">YOUR WEEKLY LITTLE QUEST</span><h2>Dinner, sorted.</h2><p>One calm shopping trip for all your favorite rotations.</p></div>
+ </div>
+ <div class="shop-section-title"><span>01 · PICK YOUR ROTATIONS</span><button type="button" id="shopSelectAll">Select all</button></div>
+ <div class="shop-rotations" id="shopRotations"></div>
+ <div class="shop-section-title"><span>02 · YOUR MARKET LIST</span><span id="shopLastRun" class="shop-last-run" hidden></span></div>
+ <div class="shop-switch">
+   <button type="button" class="active" id="shopListTab">🛍 Shopping list</button>
+   <button type="button" id="shopPantryTab">⌂ My pantry</button>
+ </div>
+ <div id="shopStatus" class="shop-status glass"></div>
+ <div id="shopListPanel">
+  <div class="shop-list-tools">
+   <button type="button" class="shop-tool-button add" id="shopAddItem">＋ Item</button>
+   <button type="button" class="shop-tool-button" id="shopCopy">⧉ Copy list</button>
+  </div>
+  <div id="shopList"></div>
+ </div>
+ <div id="shopPantryPanel" hidden>
+  <p class="shop-help-text">Mark ingredients you already have. They'll automatically disappear from the shopping list — no inventory counting required.</p>
+  <div id="shopPantry"></div>
+ </div>
+ <div class="shop-actions glass">
+  <button type="button" class="wide primary" id="shopFinish">✓ Finish this Market Run</button>
+  <div class="shop-secondary-actions">
+   <button type="button" id="shopRepeat">↺ Repeat last run</button>
+   <button type="button" id="shopNewRun">＋ Fresh run</button>
+  </div>
+  <p>Your list, pantry and recipe edits stay saved on your phone.</p>
+ </div>
+</section>
 <section id="journal" class="page"><div class="page-heading"><span class="eyebrow">MEMORIES FROM THE KITCHEN</span><h1>Meal Journal <span>📔</span></h1><p>Collect meals and moments, not perfection.</p></div><button class="wide primary" id="journalNew">＋ Add today's cooking</button><div id="journalList" class="journal-list"></div></section>
 <section id="gallery" class="page"><div class="page-heading"><span class="eyebrow">THE LITTLE MOMENTS</span><h1>My Gallery <span>🌷</span></h1><p>Photos, videos, and food that made you smile.</p></div><div id="galleryGrid" class="gallery-grid"></div></section>
 <section id="music" class="page">
@@ -59,7 +98,7 @@
 </section>
 <section id="stats" class="page"><div class="page-heading"><span class="eyebrow">PROGRESS WITHOUT PRESSURE</span><h1>Kitchen Story <span>⭐</span></h1><p>Every meal counts. Keep the joy.</p></div><div id="statsContent"></div></section>
 </main>
-<nav class="tabbar"><button class="tab active" data-tab="home"><span>⌂</span><small>Home</small></button><button class="tab" data-tab="journal"><span>▤</span><small>Journal</small></button><button class="tab addtab" id="floatingAdd"><span>＋</span></button><button class="tab" data-tab="gallery"><span>▦</span><small>Gallery</small></button><button class="tab" data-tab="music"><span>♫</span><small>Music</small></button><button class="tab" data-tab="cinema"><span>🎬</span><small>Cinema</small></button><button class="tab" data-tab="stats"><span>✧</span><small>Story</small></button></nav>
+<nav class="tabbar"><button class="tab active" data-tab="home"><span>⌂</span><small>Home</small></button><button class="tab" data-tab="journal"><span>▤</span><small>Journal</small></button><button class="tab addtab" id="floatingAdd"><span>＋</span></button><button class="tab" data-tab="gallery"><span>▦</span><small>Gallery</small></button><button class="tab" data-tab="music"><span>♫</span><small>Music</small></button><button class="tab" data-tab="cinema"><span>🎬</span><small>Cinema</small></button><button class="tab" data-tab="shop"><span>🛒</span><small>Shop</small></button><button class="tab" data-tab="stats"><span>✧</span><small>Story</small></button></nav>
 </div>
 <!-- Persistent visible YouTube player: intentionally outside SPA pages so tab changes cannot unmount it. -->
 <aside id="youtubeDock" class="youtube-dock" hidden aria-label="Persistent YouTube video player">
@@ -76,4 +115,4 @@
 <div class="mini-music" id="miniMusic" hidden><span class="mini-musical">♫</span><button id="miniMusicTitle" class="mini-name">Cooking Radio</button><button id="miniPrev" class="mini-icon" title="Previous track">‹</button><button id="miniToggle" class="mini-icon" title="Play or pause">▶</button><button id="miniNext" class="mini-icon" title="Next track">›</button></div>
 <div class="toast" id="toast"></div>
 <input id="importFile" type="file" accept="application/json" hidden/>
-<script src="app.js"></script><script src="music.js"></script><script src="cinema.js"></script><script src="sfx.js"></script></body></html>
+<script src="app.js"></script><script src="music.js"></script><script src="cinema.js"></script><script src="shop.js"></script><script src="sfx.js"></script></body></html>

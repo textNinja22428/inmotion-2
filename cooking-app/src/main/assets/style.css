@@ -159,3 +159,80 @@ body.intro-pending .mini-music,body.intro-pending .youtube-dock,body.intro-pendi
 #sfxVolume{width:100%;accent-color:#9e6db7;cursor:pointer;height:24px;margin:8px 0 4px}
 .sound-note{font-size:10px;line-height:1.5;color:#8d7381}
 .sound-preview{border:1px solid #d7b7dc;background:#fff9f0;color:#79518c;border-radius:11px;padding:9px 15px;font-size:12px;font-weight:900;margin-top:12px}
+
+
+/* Market Run — readable, calm shopping companion */
+#shop{padding-bottom:170px}
+.shop-intro{min-height:115px;display:flex;align-items:center;gap:15px;padding:17px 19px;background:linear-gradient(120deg,#fff7e8f4,#f4e5f8f4)}
+.shop-basket-illustration{font-size:47px;position:relative;flex:0 0 60px}
+.shop-basket-illustration span{font-size:23px;color:#aa78bf;position:absolute;right:0;top:-7px}
+.shop-intro-copy h2{font-size:25px;letter-spacing:-.7px;color:#473047;margin:6px 0 4px}
+.shop-intro-copy p{margin:0;color:#806d79;font-size:11px;line-height:1.5}
+.shop-section-title{display:flex;align-items:center;justify-content:space-between;gap:7px;margin:25px 3px 12px;color:#fff6ec}
+.shop-section-title>span:first-child{font-size:10px;letter-spacing:1.2px;font-weight:900}
+.shop-section-title button{border:0;border-radius:12px;background:#fff7eaed;color:#734c73;font-size:11px;font-weight:900;padding:8px 12px}
+.shop-last-run{font-size:10px;color:#f4e0de}
+.shop-rotations{display:grid;gap:9px}
+.shop-rotation{background:#fffaf4ee;border:1.5px solid #ffffffbf;border-radius:18px;box-shadow:0 6px 17px #24142626;overflow:hidden}
+.shop-rotation.selected{background:#fff5e6f8;border-color:#e7bb83}
+.shop-rotation-select{display:flex;align-items:center;gap:11px;width:100%;padding:12px 13px 6px;border:0;text-align:left;background:transparent;color:#423544}
+.shop-rotation-emoji{font-size:28px;display:grid;place-items:center;width:43px;height:43px;background:#f0e5e9;border-radius:12px}
+.shop-rotation.selected .shop-rotation-emoji{background:#fae6cc}
+.shop-rotation-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.shop-rotation-text b{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.shop-rotation-text small{font-size:10px;color:#8d7887;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.shop-round-check{width:26px;height:26px;display:grid;place-items:center;border:2px solid #d6bfd4;border-radius:50%;font-size:16px;font-weight:900;color:#ae8eab}
+.shop-rotation.selected .shop-round-check{border-color:#9873ae;background:#9873ae;color:white}
+.shop-rotation-footer{display:flex;align-items:center;justify-content:space-between;padding:3px 12px 9px 65px;min-height:30px}
+.shop-text-action{border:0;background:transparent;color:#896097;font-size:11px;font-weight:850;padding:5px 0}
+.shop-servings{display:flex;align-items:center;gap:8px;background:#f8e6d3;border-radius:30px;padding:3px}
+.shop-servings button{border:0;border-radius:50%;width:28px;height:28px;background:#fffaf0;color:#674a6f;font-size:16px;font-weight:850}
+.shop-servings span{min-width:20px;text-align:center;font-size:11px;font-weight:900;color:#654d63}
+.shop-switch{display:flex;gap:5px;padding:5px;border-radius:15px;background:#fceaf1ef;margin-bottom:12px}
+.shop-switch button{flex:1;border:0;border-radius:11px;background:transparent;color:#8d7485;font-size:12px;font-weight:850;padding:11px 5px}
+.shop-switch button.active{color:#69497b;background:white;box-shadow:0 4px 12px #29122320}
+.shop-status{padding:15px 16px;margin-bottom:13px;background:#fff9f0ee}
+.shop-status-count{display:flex;align-items:baseline;gap:11px;color:#5c4558}
+.shop-status-count strong{font-size:23px;font-weight:950;font-variant-numeric:tabular-nums}
+.shop-status-count span{font-size:12px;font-weight:800}
+.shop-status-progress{width:100%;height:7px;background:#f1e1e5;border-radius:10px;overflow:hidden;margin-top:10px}
+.shop-status-progress i{display:block;height:100%;border-radius:10px;background:linear-gradient(90deg,#b28ac9,#d9998a);transition:width .2s}
+.shop-status p{font-size:10px;color:#957889;margin:10px 0 0}
+.shop-list-tools{display:flex;gap:8px;margin:14px 0}
+.shop-tool-button{flex:1;min-height:43px;border:1px solid #fff1e3e0;border-radius:14px;background:#fff9f2e9;color:#6a4e65;font-size:12px;font-weight:900}
+.shop-tool-button.add{background:#e7d2f1f5}
+.shop-category{margin:15px 0 17px}
+.shop-category-heading{font-size:11px;font-weight:950;letter-spacing:1.1px;text-transform:uppercase;color:#fff8ec;margin:0 4px 9px}
+.shop-item{display:flex;align-items:center;gap:9px;min-height:63px;background:#fffaf4f4;border-radius:13px;padding:11px 10px;margin:6px 0;box-shadow:0 3px 13px #2913231d}
+.shop-item.collected{opacity:.62}
+.shop-item-check{flex:0 0 27px;width:27px;height:27px;border-radius:8px;border:2px solid #d8c4d7;background:white;color:white;font-size:14px;font-weight:950}
+.shop-item.collected .shop-item-check,.shop-item-check.owned{border-color:#8dac97;background:#8dac97}
+.shop-item-info{min-width:0;flex:1}
+.shop-item-info b{display:block;font-size:12px;color:#3f3542;overflow-wrap:anywhere}
+.shop-item.collected .shop-item-info b{text-decoration:line-through}
+.shop-item-info small{display:block;font-size:9px;color:#987c90;margin-top:4px;overflow-wrap:anywhere}
+.shop-item-amount{font-size:10px;font-weight:850;color:#785b78;white-space:nowrap;text-align:right;max-width:77px}
+.shop-item-pantry{flex:0 0 26px;width:26px;height:26px;border:0;border-radius:8px;background:#efe4eb;color:#91768e;font-size:18px}
+.shop-empty{background:#fff9f0ed;border:1px dashed #e1cbdc;border-radius:17px;padding:23px 20px;text-align:center;font-size:12px;line-height:1.7;color:#796674;margin-top:12px}
+.shop-empty span{display:block;font-size:34px;margin-bottom:7px}
+.shop-empty strong{display:block;font-size:15px;margin-bottom:5px;color:#59455c}
+.shop-gentle-warning{font-size:11px;line-height:1.5;padding:13px;background:#fff5de;border-radius:12px;color:#765948}
+.shop-help-text{font-size:11px;line-height:1.6;color:#fff4eb;margin:14px 4px}
+.shop-actions{padding:14px;margin-top:22px;background:#fff9f1ed}
+.shop-secondary-actions{display:flex;gap:8px;margin-top:11px}
+.shop-secondary-actions button{flex:1;min-height:41px;background:#eee0f3;border:0;border-radius:12px;color:#765c85;font-size:11px;font-weight:900}
+.shop-secondary-actions button:disabled{opacity:.35}
+.shop-actions p{font-size:10px;text-align:center;color:#987f8d;margin:12px 0 0}
+.shop-modal-hint{font-size:11px;line-height:1.5;color:#846b7b}
+.shop-recipe-row{padding:9px;background:#f9eff5;border-radius:13px;margin:10px 0;display:grid;gap:7px}
+.shop-recipe-name{width:100%;min-height:42px;border:1px solid #e6d0dd;background:white;color:#3f3441;border-radius:10px;padding:9px;font-size:12px}
+.shop-recipe-details{display:grid;grid-template-columns:1fr 1fr 1.4fr 31px;gap:5px;align-items:center}
+.shop-recipe-details input,.shop-recipe-details select{width:100%;min-width:0;min-height:37px;border:1px solid #e6d0dd;background:white;color:#514253;border-radius:8px;padding:6px;font-size:11px}
+.shop-remove-row{width:31px;height:37px;border:0;border-radius:8px;background:#f2dfe4;color:#934c63;font-size:18px}
+.shop-restore-recipe{margin-top:10px;border:0;color:#7d6481;background:#f0e3ee}
+.tabbar .tab{min-width:0}
+.tabbar .tab small{font-size:8.5px;letter-spacing:-.2px}
+.tabbar .tab span{font-size:22px}
+.tabbar #floatingAdd{position:absolute;right:11px;top:-54px;min-width:45px;width:45px;height:45px;flex:0 0 45px;border-radius:50%;background:linear-gradient(135deg,#b593cb,#f2b39f);color:white;box-shadow:0 7px 18px #26142466;z-index:4;padding:3px}
+.tabbar #floatingAdd span{font-size:30px;line-height:37px}
+@media(max-width:365px){.tabbar{padding-left:4px;padding-right:4px}.tabbar .tab span{font-size:20px}.tabbar .tab small{font-size:8px}.shop-recipe-details{grid-template-columns:.75fr .9fr 1.1fr 29px}}
