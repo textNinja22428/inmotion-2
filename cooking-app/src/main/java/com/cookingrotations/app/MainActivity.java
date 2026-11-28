@@ -148,7 +148,30 @@ public final class MainActivity extends Activity {
       .addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this)).build();
     webView.setWebViewClient(new WebViewClient() {
       @Override public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-        return assetsLoader.shouldInterceptRequest(request.getUrl());
+        Uri url=request.getUrl();
+        if("https".equalsIgnoreCase(url.getScheme())
+           && "appassets.androidplatform.net".equalsIgnoreCase(url.getHost())
+           && url.getPath()!=null && url.getPath().startsWith("/hunt-media/")){
+          String raw=url.getLastPathSegment();
+          if(raw==null||raw.isEmpty()||raw.length()>8192)return HuntFeedMediaProxy.error(404,"Invalid Media");
+          try {
+            byte[] decoded=Base64.decode(raw,Base64.URL_SAFE|Base64.NO_WRAP|Base64.NO_PADDING);
+            String contentUri=new String(decoded,StandardCharsets.UTF_8);
+            if(!contentUri.startsWith("content://")||contentUri.length()>4096)
+              return HuntFeedMediaProxy.error(403,"Not Allowed");
+            // Only SAF URIs previously imported through HUNT's Android document picker.
+            // Never proxy arbitrary provider URIs or external network locations.
+            JSONArray known=new JSONArray(cinemaPrefs.getString("videos","[]"));
+            boolean allowed=false;
+            for(int i=0;i<known.length();i++){
+              if(contentUri.equals(known.getJSONObject(i).optString("uri"))){allowed=true;break;}
+            }
+            if(!allowed)return HuntFeedMediaProxy.error(403,"Not Imported");
+            return HuntFeedMediaProxy.stream(MainActivity.this,Uri.parse(contentUri),
+              request.getRequestHeaders().get("Range"));
+          }catch(Exception e){return HuntFeedMediaProxy.error(404,"Invalid Media");}
+        }
+        return assetsLoader.shouldInterceptRequest(url);
       }
     });
     webView.setWebChromeClient(new WebChromeClient() {
